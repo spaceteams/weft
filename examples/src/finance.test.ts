@@ -6,8 +6,6 @@ import {
   diffToAsciiTree,
   diffToMermaid,
   evaluate,
-  evaluateDraft,
-  explainDiffs,
   explainModelTarget,
   explainTraceTarget,
   key,
@@ -91,9 +89,7 @@ it("explains", () => {
 });
 
 it("explains as mermaid", () => {
-  expect(
-    nodeToMermaid(explainModelTarget(compiledModel.model, total.id)),
-  ).toMatchInlineSnapshot(`
+  expect(nodeToMermaid(explainModelTarget(compiledModel.model, total.id))).toMatchInlineSnapshot(`
     "graph TD
         Bilanzsumme["Bilanzsumme<br/>[rule]"]
         Bilanzsumme -->|equity| Bilanzsumme__equity__Eigenkapital
@@ -106,7 +102,12 @@ it("explains as mermaid", () => {
 it("evaluates", () => {
   const result = evaluate(compiledModel.model, { equity: 100, liabilities: 25 });
   expect(
-    nodeToAsciiTree(explainTraceTarget(compiledModel.model, result.trace, equityRatio.id), "", true, true),
+    nodeToAsciiTree(
+      explainTraceTarget(compiledModel.model, result.trace, equityRatio.id),
+      "",
+      true,
+      true,
+    ),
   ).toMatchInlineSnapshot(`
     "└── equityRatio -> Eigenkapitalquote [rule] = 0.8
         ├── equity -> Eigenkapital [input] = 100
@@ -117,7 +118,15 @@ it("evaluates", () => {
 });
 
 it("evaluates drafts and explains the diff", () => {
-  const { explainedDiffs } = analyzeDraft(compiledModel.model, { draftId: "my-draft", base: { equity: 100, liabilities: 25 }, overlay: { equity: 100, liabilities: 10 } }, "lenient")
+  const { explainedDiffs } = analyzeDraft(
+    compiledModel.model,
+    {
+      draftId: "my-draft",
+      base: { equity: 100, liabilities: 25 },
+      overlay: { liabilities: 10 },
+    },
+    "lenient",
+  );
 
   // default: all flags true
   expect(diffToAsciiTree(explainedDiffs)).toMatchInlineSnapshot(`
@@ -131,21 +140,27 @@ it("evaluates drafts and explains the diff", () => {
   `);
 
   // compact: no labels, no kind, no deps
-  expect(diffToAsciiTree(explainedDiffs, { showLabels: false, showKind: false, showDeps: false })).toMatchInlineSnapshot(`
+  expect(
+    diffToAsciiTree(explainedDiffs, { showLabels: false, showKind: false, showDeps: false }),
+  ).toMatchInlineSnapshot(`
     "├── liabilities: 25 → 10
     ├── total: 125 → 110
     └── equityRatio: 0.8 → 0.9090909090909091"
   `);
 
   // labels only, no kind or deps
-  expect(diffToAsciiTree(explainedDiffs, { showKind: false, showDeps: false })).toMatchInlineSnapshot(`
+  expect(
+    diffToAsciiTree(explainedDiffs, { showKind: false, showDeps: false }),
+  ).toMatchInlineSnapshot(`
     "├── liabilities -> Fremdkapital: 25 → 10
     ├── total -> Bilanzsumme: 125 → 110
     └── equityRatio -> Eigenkapitalquote: 0.8 → 0.9090909090909091"
   `);
 
   // deps but no labels or kind
-  expect(diffToAsciiTree(explainedDiffs, { showLabels: false, showKind: false })).toMatchInlineSnapshot(`
+  expect(
+    diffToAsciiTree(explainedDiffs, { showLabels: false, showKind: false }),
+  ).toMatchInlineSnapshot(`
     "├── liabilities: 25 → 10
     ├── total: 125 → 110
     │   ├── equity (unchanged)

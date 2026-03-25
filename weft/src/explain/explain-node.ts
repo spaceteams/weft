@@ -11,7 +11,11 @@ export type ExplainNode = {
   readonly deps?: Readonly<Record<KeyId, ExplainNode>>;
 };
 
-export function explainTraceTarget(model: CompiledModel, trace: readonly TraceStep[], target: KeyId): ExplainNode {
+export function explainTraceTarget(
+  model: CompiledModel,
+  trace: readonly TraceStep[],
+  target: KeyId,
+): ExplainNode {
   const stepByTarget = new Map(trace.map((s) => [s.target, s]));
 
   function build(key: string, parentStep?: TraceStep): ExplainNode {
@@ -22,7 +26,11 @@ export function explainTraceTarget(model: CompiledModel, trace: readonly TraceSt
         id: key,
         name: keyMeta?.label ?? key,
         kind: "input",
-        meta: parentStep ? { value: parentStep.inputs[key], ...keyMeta } : keyMeta ? { ...keyMeta } : undefined,
+        meta: parentStep
+          ? { value: parentStep.inputs[key], ...keyMeta }
+          : keyMeta
+            ? { ...keyMeta }
+            : undefined,
       };
     }
 

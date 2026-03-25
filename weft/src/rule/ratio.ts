@@ -1,7 +1,12 @@
-import type { Key } from "../key";
+import type { Key, KeyId } from "../key";
 import type { Divisible } from "../semantics/algebra";
 import { type Rule, rule } from ".";
 
+export type RatioTraceDetail = {
+  op: "ratio";
+  numerator: KeyId;
+  denominator: KeyId;
+};
 export function ratio<T, R>(
   ops: Divisible<T, R>,
   target: Key<R>,
@@ -11,6 +16,14 @@ export function ratio<T, R>(
   return rule({
     target,
     deps: [numerator, denominator],
-    eval: (get) => ops.div(get(numerator), get(denominator)),
+    eval: (get) => {
+      const output = ops.div(get(numerator), get(denominator));
+      const detail: RatioTraceDetail = {
+        op: "ratio",
+        numerator: numerator.id,
+        denominator: denominator.id,
+      };
+      return { output, detail };
+    },
   });
 }

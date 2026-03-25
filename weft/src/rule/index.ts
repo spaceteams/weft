@@ -6,13 +6,13 @@ export type Rule<T> = {
   readonly kind: "rule";
   readonly target: Key<T>;
   readonly deps: readonly Key<unknown>[];
-  readonly eval: (get: Resolver) => T;
+  readonly eval: (get: Resolver) => { output: T; detail: unknown };
 };
 
 export function rule<T>(def: {
   target: Key<T>;
   deps: readonly Key<unknown>[];
-  eval: (get: Resolver) => T;
+  eval: (get: Resolver) => { output: T; detail: unknown };
 }): Rule<T> {
   return {
     kind: "rule",

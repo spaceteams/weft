@@ -65,7 +65,7 @@ export function evaluate(
       return values.get(key.id) as T;
     };
 
-    const output = rule.eval(get);
+    const { output, detail } = rule.eval(get);
     values.set(target, output);
 
     const deps = model.depsByTarget.get(target) ?? [];
@@ -77,6 +77,7 @@ export function evaluate(
       ruleKind: rule.kind,
       ruleMeta: ruleMeta,
       keyMeta: keyMeta,
+      detail,
       inputs,
       output,
     });

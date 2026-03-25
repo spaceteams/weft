@@ -7,11 +7,11 @@ export type ValueDelta =
   | { readonly key: KeyId; readonly kind: "added"; readonly after: unknown }
   | { readonly key: KeyId; readonly kind: "removed"; readonly before: unknown }
   | {
-    readonly key: KeyId;
-    readonly kind: "changed";
-    readonly before: unknown;
-    readonly after: unknown;
-  };
+      readonly key: KeyId;
+      readonly kind: "changed";
+      readonly before: unknown;
+      readonly after: unknown;
+    };
 
 export function diffResults(
   model: CompiledModel,

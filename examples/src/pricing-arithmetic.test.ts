@@ -92,7 +92,12 @@ it("explains", () => {
 it("evaluates", () => {
   const result = evaluate(compiledModel.model, { revenue: 1000, cost: 600, taxRate: 0.25 });
   expect(
-    nodeToAsciiTree(explainTraceTarget(compiledModel.model, result.trace, netProfit.id), "", true, true),
+    nodeToAsciiTree(
+      explainTraceTarget(compiledModel.model, result.trace, netProfit.id),
+      "",
+      true,
+      true,
+    ),
   ).toMatchInlineSnapshot(`
     "└── netProfit -> net profit [rule] = 300
         ├── grossProfit -> gross profit [rule] = 400

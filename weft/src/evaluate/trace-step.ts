@@ -10,4 +10,5 @@ export type TraceStep = {
   readonly ruleKind: string;
   readonly inputs: Record<KeyId, unknown>;
   readonly output: unknown;
+  readonly detail: unknown;
 };
