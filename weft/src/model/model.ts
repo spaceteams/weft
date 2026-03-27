@@ -1,11 +1,11 @@
-import type { Key, KeyId } from "../key";
-import type { CompiledModel } from "../model";
+import type { AnyKey, KeyId } from "../key";
+import type { CompiledModel } from ".";
 
-export function getDependencies(model: CompiledModel, key: Key<unknown>): readonly KeyId[] {
+export function getDependencies(model: CompiledModel, key: AnyKey): readonly KeyId[] {
   return model.depsByTarget.get(key.id) ?? [];
 }
 
-export function getDependents(model: CompiledModel, key: Key<unknown>): readonly KeyId[] {
+export function getDependents(model: CompiledModel, key: AnyKey): readonly KeyId[] {
   return model.dependentsByKey.get(key.id) ?? [];
 }
 
@@ -13,7 +13,7 @@ export function getDeclaredKeys(model: CompiledModel): readonly KeyId[] {
   return [...model.inputKeys, ...model.orderedRuleTargets];
 }
 
-export function upstreamOf(model: CompiledModel, key: Key<unknown>): readonly KeyId[] {
+export function upstreamOf(model: CompiledModel, key: AnyKey): readonly KeyId[] {
   const visited = new Set<KeyId>();
   const stack = [...(model.depsByTarget.get(key.id) ?? [])];
 
@@ -33,7 +33,7 @@ export function upstreamOf(model: CompiledModel, key: Key<unknown>): readonly Ke
   return sortKeysByModelOrder(model, visited);
 }
 
-export function downstreamOf(model: CompiledModel, key: Key<unknown>): readonly KeyId[] {
+export function downstreamOf(model: CompiledModel, key: AnyKey): readonly KeyId[] {
   const visited = new Set<KeyId>();
   const stack = [...(model.dependentsByKey.get(key.id) ?? [])];
 

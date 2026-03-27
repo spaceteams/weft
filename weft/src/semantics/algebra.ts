@@ -1,3 +1,8 @@
+export type OpsDescriptor = {
+  readonly family: string;
+  readonly version: string;
+};
+
 export type Equality<T> = {
   eq(a: T, b: T): boolean;
 };
@@ -21,14 +26,19 @@ export type Divisible<T, R> = {
   div(a: T, b: T): R;
 };
 
-export const defaultOps: Equality<unknown> = {
+export const defaultOps: OpsDescriptor & Equality<unknown> = {
+  family: "default/unknown",
+  version: "1",
   eq: Object.is,
 };
 
-export const defaultNumberOps: Order<number> &
+export const defaultNumberOps: OpsDescriptor &
+  Order<number> &
   Additive<number> &
   Scalable<number, number> &
   Divisible<number, number> = {
+  family: "default/number",
+  version: "1",
   eq: (a, b) => a === b,
   compare: (a, b) => (a < b ? -1 : a > b ? 1 : 0),
   zero: () => 0,

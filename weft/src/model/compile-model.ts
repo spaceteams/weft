@@ -1,4 +1,4 @@
-import type { Key, KeyId } from "../key";
+import type { AnyKey, KeyId } from "../key";
 import type { Rule } from "../rule";
 import type { CompiledModel, Model } from ".";
 
@@ -153,8 +153,8 @@ export function compileModel(model: Model): CompileResult {
   );
 
   const declaredKeys = [
-    ...model.inputs.map((i): [KeyId, Key<unknown>] => [i.key.id, i.key]),
-    ...model.rules.map((r): [KeyId, Key<unknown>] => [r.target.id, r.target]),
+    ...model.inputs.map((i): [KeyId, AnyKey] => [i.key.id, i.key]),
+    ...model.rules.map((r): [KeyId, AnyKey] => [r.target.id, r.target]),
   ];
 
   return {
@@ -162,6 +162,7 @@ export function compileModel(model: Model): CompileResult {
     issues,
     model: {
       keys: new Map(declaredKeys),
+      semantics: model.semantics,
       inputs: model.inputs,
       rules: model.rules,
       keyMeta: model.keyMeta,

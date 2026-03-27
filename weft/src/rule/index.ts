@@ -1,21 +1,24 @@
-import type { Key } from "../key";
+import type { AnyKey, Key } from "../key";
 
 export type Resolver = <T>(key: Key<T>) => T;
 
 export type Rule<T> = {
-  readonly kind: "rule";
+  readonly __kind: "rule";
+  readonly spec: Record<string, unknown>;
   readonly target: Key<T>;
-  readonly deps: readonly Key<unknown>[];
-  readonly eval: (get: Resolver) => { output: T; detail: unknown };
+  readonly deps: readonly AnyKey[];
+  readonly eval: (get: Resolver) => { output: T; detail?: Record<string, unknown> };
 };
 
 export function rule<T>(def: {
   target: Key<T>;
-  deps: readonly Key<unknown>[];
-  eval: (get: Resolver) => { output: T; detail: unknown };
+  deps: readonly AnyKey[];
+  spec: Record<string, unknown>;
+  eval: (get: Resolver) => { output: T; detail?: Record<string, unknown> };
 }): Rule<T> {
   return {
-    kind: "rule",
+    __kind: "rule",
+    spec: def.spec,
     target: def.target,
     deps: def.deps,
     eval: def.eval,

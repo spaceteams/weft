@@ -3,13 +3,14 @@ import {
   createModel,
   defaultNumberOps,
   evaluate,
-  explainModelTarget,
-  explainTraceTarget,
+  inspectionNodeToAscii,
+  inspectModelTarget,
+  inspectTraceTarget,
   key,
-  nodeToAsciiTree,
   ratio,
   scale,
   toGraph,
+  value,
   weightedSum,
 } from "@spaceteams/weft";
 import { expect, it } from "vitest";
@@ -31,8 +32,8 @@ m.input(taxRate, { label: "Tax Rate" });
 
 m.rule(
   weightedSum(defaultNumberOps, grossProfit, [
-    { key: revenue, weight: 1 },
-    { key: cost, weight: -1 },
+    { key: revenue, weight: value(1) },
+    { key: cost, weight: value(-1) },
   ]),
   { label: "gross profit" },
 );
@@ -41,8 +42,8 @@ m.rule(scale(defaultNumberOps, tax, grossProfit, taxRate), { label: "tax" });
 
 m.rule(
   weightedSum(defaultNumberOps, netProfit, [
-    { key: grossProfit, weight: 1 },
-    { key: tax, weight: -1 },
+    { key: grossProfit, weight: value(1) },
+    { key: tax, weight: value(-1) },
   ]),
   { label: "net profit" },
 );
@@ -73,40 +74,41 @@ it("renders a graph", () => {
 
 it("explains", () => {
   expect(
-    nodeToAsciiTree(explainModelTarget(compiledModel.model, margin.id), "", true, true),
+    inspectionNodeToAscii(inspectModelTarget(compiledModel.model, margin.id), {
+      showChange: true,
+      showMeta: true,
+    }),
   ).toMatchInlineSnapshot(`
-    "└── margin -> Margin [rule]
-        ├── netProfit -> net profit [rule]
-        │   ├── grossProfit -> gross profit [rule]
-        │   │   ├── revenue -> Revenue [input]
-        │   │   └── cost -> Cost [input]
-        │   └── tax [rule]
-        │       ├── grossProfit -> gross profit [rule]
-        │       │   ├── revenue -> Revenue [input]
-        │       │   └── cost -> Cost [input]
-        │       └── taxRate -> Tax Rate [input]
-        └── cost -> Cost [input]"
+    "└── Margin [ratio]
+        ├── net profit [weighted-sum]
+        │   ├── gross profit [weighted-sum]
+        │   │   ├── Revenue [input]
+        │   │   └── Cost [input]
+        │   └── tax [scale]
+        │       ├── gross profit [weighted-sum]
+        │       │   ├── Revenue [input]
+        │       │   └── Cost [input]
+        │       └── Tax Rate [input]
+        └── Cost [input]"
   `);
 });
 
 it("evaluates", () => {
   const result = evaluate(compiledModel.model, { revenue: 1000, cost: 600, taxRate: 0.25 });
   expect(
-    nodeToAsciiTree(
-      explainTraceTarget(compiledModel.model, result.trace, netProfit.id),
-      "",
-      true,
-      true,
-    ),
+    inspectionNodeToAscii(inspectTraceTarget(compiledModel.model, result.trace, netProfit.id), {
+      showMeta: true,
+      showChange: false,
+    }),
   ).toMatchInlineSnapshot(`
-    "└── netProfit -> net profit [rule] = 300
-        ├── grossProfit -> gross profit [rule] = 400
-        │   ├── revenue -> Revenue [input] = 1000
-        │   └── cost -> Cost [input] = 600
-        └── tax [rule] = 100
-            ├── grossProfit -> gross profit [rule] = 400
-            │   ├── revenue -> Revenue [input] = 1000
-            │   └── cost -> Cost [input] = 600
-            └── taxRate -> Tax Rate [input] = 0.25"
+    "└── net profit [weighted-sum] = 300
+        ├── gross profit [weighted-sum] = 400
+        │   ├── Revenue [input] = 1000
+        │   └── Cost [input] = 600
+        └── tax [scale] = 100
+            ├── gross profit [weighted-sum] = 400
+            │   ├── Revenue [input] = 1000
+            │   └── Cost [input] = 600
+            └── Tax Rate [input] = 0.25"
   `);
 });

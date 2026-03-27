@@ -14,3 +14,7 @@ export type Draft = {
 export function createDraft(draftId: DraftId, base: FactBag, overlay: Overlay): Draft {
   return { draftId, base, overlay };
 }
+
+export function isEmptyDraft(draft: Draft) {
+  return Object.keys(draft.overlay).length === 0;
+}

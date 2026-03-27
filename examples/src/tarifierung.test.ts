@@ -4,13 +4,17 @@ import {
   createModel,
   decision,
   defaultNumberOps,
-  diffToAsciiTree,
+  defaultOps,
   evaluate,
-  explainTraceTarget,
+  freezeDraftAnalysis,
+  inspectDiffTarget,
+  inspectionNodeToAscii,
+  inspectTraceTarget,
   key,
-  nodeToAsciiTree,
+  projection,
   ratio,
   sum,
+  value,
 } from "@spaceteams/weft";
 import { expect, it } from "vitest";
 
@@ -37,10 +41,45 @@ m.input(fremdkapital, {
 m.rule(sum(defaultNumberOps, total, [eigenkapital, fremdkapital]), { label: "Bilanzsumme" });
 m.rule(ratio(defaultNumberOps, ekQuote, eigenkapital, total), { label: "Eigenkapitalquote" });
 
+const finanzbericht = key<{ guvGliederung: "GKV" | "UKV" }>("finanzbericht");
+const guvGliederung = key<"GKV" | "UKV">("guvGliederung");
+m.input(finanzbericht, { label: "Finanzbericht" });
+m.rule(projection(guvGliederung, finanzbericht, "guvGliederung"), { label: "GUV" });
+
+const umsatzrenditeUkv = key<number>("umsatzrenditeUkv");
+const umsatzrenditeGkv = key<number>("umsatzrenditeGkv");
 const umsatzrendite = key<number>("umsatzrendite");
-m.input(umsatzrendite, {
-  label: "Umsatzrendite",
-});
+m.input(umsatzrenditeUkv, { label: "Umsatzrendite UKV" });
+m.input(umsatzrenditeGkv, { label: "Umsatzrendite GKV" });
+m.rule(
+  decision(defaultOps, umsatzrendite, {
+    name: "umsatzrendite",
+    rows: [
+      {
+        id: "ukv",
+        when: [
+          {
+            op: "eq",
+            source: guvGliederung,
+            right: value("UKV"),
+          },
+        ],
+        output: umsatzrenditeUkv,
+      },
+      {
+        id: "gkv",
+        when: [
+          {
+            op: "eq",
+            source: guvGliederung,
+            right: value("GKV"),
+          },
+        ],
+        output: umsatzrenditeGkv,
+      },
+    ],
+  }),
+);
 
 const ekQuoteFaktor = key<number>("ekQuoteFaktor");
 m.rule(
@@ -49,18 +88,18 @@ m.rule(
     rows: [
       {
         id: "band-1",
-        when: [{ op: "gte", source: ekQuote, right: { kind: "value", value: 0.2 } }],
-        then: 0.1,
+        when: [{ op: "gte", source: ekQuote, right: value(0.2) }],
+        output: value(0.1),
       },
       {
         id: "band-2",
-        when: [{ op: "gt", source: ekQuote, right: { kind: "value", value: -0.2 } }],
-        then: 0.0,
+        when: [{ op: "gt", source: ekQuote, right: value(-0.2) }],
+        output: value(0.0),
       },
       {
         id: "band-3",
-        when: [{ op: "lte", source: ekQuote, right: { kind: "value", value: -0.2 } }],
-        then: -0.1,
+        when: [{ op: "lte", source: ekQuote, right: value(-0.2) }],
+        output: value(-0.1),
       },
     ],
   }),
@@ -73,18 +112,18 @@ m.rule(
     rows: [
       {
         id: "band-1",
-        when: [{ op: "gte", source: umsatzrendite, right: { kind: "value", value: 0.2 } }],
-        then: 0.1,
+        when: [{ op: "gte", source: umsatzrendite, right: value(0.2) }],
+        output: value(0.1),
       },
       {
         id: "band-2",
-        when: [{ op: "gt", source: umsatzrendite, right: { kind: "value", value: -0.2 } }],
-        then: 0.0,
+        when: [{ op: "gt", source: umsatzrendite, right: value(-0.2) }],
+        output: value(0.0),
       },
       {
         id: "band-3",
-        when: [{ op: "lte", source: umsatzrendite, right: { kind: "value", value: -0.2 } }],
-        then: -0.1,
+        when: [{ op: "lte", source: umsatzrendite, right: value(-0.2) }],
+        output: value(0.1),
       },
     ],
   }),
@@ -105,59 +144,83 @@ if (!compiledModel.ok) {
 }
 
 it("evaluates", () => {
-  const result = evaluate(compiledModel.model, {
-    eigenkapital: 100,
-    fremdkapital: 25,
-    umsatzrendite: 0.1,
-    baseFaktor: 0.4,
-  });
+  const result = evaluate(
+    compiledModel.model,
+    {
+      eigenkapital: 100,
+      fremdkapital: 25,
+      baseFaktor: 0.4,
+      umsatzrenditeUkv: 0.1,
+      finanzbericht: { guvGliederung: "UKV" },
+    },
+    "lenient",
+  );
   expect(
-    nodeToAsciiTree(
-      explainTraceTarget(compiledModel.model, result.trace, tarifierungsFaktor.id),
-      "",
-      true,
-      true,
+    inspectionNodeToAscii(
+      inspectTraceTarget(compiledModel.model, result.trace, tarifierungsFaktor.id),
+      { showChange: true, showMeta: true },
     ),
   ).toMatchInlineSnapshot(`
-    "└── tarifierungsFaktor [rule] = 0.5
-        ├── baseFaktor -> BaseFaktor [input] = 0.4
-        ├── umsatzrenditeFaktor [rule] = 0
-        │   └── umsatzrendite -> Umsatzrendite [input] = 0.1
-        └── ekQuoteFaktor [rule] = 0.1
-            └── ekQuote -> Eigenkapitalquote [rule] = 0.8
-                ├── eigenkapital -> Eigenkapital [input] = 100
-                └── total -> Bilanzsumme [rule] = 125
-                    ├── eigenkapital -> Eigenkapital [input] = 100
-                    └── fremdkapital -> Fremdkapital [input] = 25"
+    "└── tarifierungsFaktor [sum] = 0.5
+        ├── BaseFaktor [input] = 0.4
+        ├── umsatzrenditeFaktor [decision] = 0 :: band-2
+        │   └── umsatzrendite [decision] = 0.1 :: ukv
+        │       └── GUV [project] = UKV
+        │           └── Finanzbericht [input] = [object Object]
+        └── ekQuoteFaktor [decision] = 0.1 :: band-1
+            └── Eigenkapitalquote [ratio] = 0.8
+                ├── Eigenkapital [input] = 100
+                └── Bilanzsumme [sum] = 125
+                    ├── Eigenkapital [input] = 100
+                    └── Fremdkapital [input] = 25"
   `);
 });
 
 it("evaluates drafts and explains the diff", () => {
-  const { explainedDiffs } = analyzeDraft(
+  const analysis = analyzeDraft(
     compiledModel.model,
     {
       draftId: "my-draft",
-      base: { eigenkapital: 100, fremdkapital: 25, umsatzrendite: 0.1, baseFaktor: 0.4 },
+      base: {
+        eigenkapital: 100,
+        fremdkapital: 25,
+        baseFaktor: 0.4,
+        umsatzrenditeUkv: 0.1,
+        finanzbericht: { guvGliederung: "UKV" },
+      },
       overlay: { fremdkapital: 2500 },
     },
     "lenient",
   );
+  expect(analysis.impact).toEqual({
+    direct: ["fremdkapital"],
+    affected: ["total", "ekQuote", "ekQuoteFaktor", "tarifierungsFaktor"],
+    terminal: ["tarifierungsFaktor"],
+  });
 
   expect(
-    diffToAsciiTree(explainedDiffs, { showLabels: false, showKind: false }),
+    inspectionNodeToAscii(
+      inspectDiffTarget(
+        compiledModel.model,
+        analysis.evaluated.result,
+        analysis.changes,
+        analysis.impact.terminal[0],
+      ),
+      { showChange: true, showMeta: true },
+    ),
   ).toMatchInlineSnapshot(`
-    "├── fremdkapital: 25 → 2500
-    ├── total: 125 → 2600
-    │   ├── eigenkapital (unchanged)
-    │   └── fremdkapital (changed)
-    ├── ekQuote: 0.8 → 0.038461538461538464
-    │   ├── eigenkapital (unchanged)
-    │   └── total (changed)
-    ├── ekQuoteFaktor: 0.1 → 0
-    │   └── ekQuote (changed)
-    └── tarifierungsFaktor: 0.5 → 0.4
-        ├── baseFaktor (unchanged)
-        ├── umsatzrenditeFaktor (unchanged)
-        └── ekQuoteFaktor (changed)"
+    "└── tarifierungsFaktor [sum] = 0.5 -> 0.4 (changed)
+        ├── BaseFaktor [input] = 0.4
+        ├── umsatzrenditeFaktor [decision] = 0 :: band-2
+        │   └── umsatzrendite [decision] = 0.1 :: ukv
+        │       └── GUV [project] = UKV
+        │           └── Finanzbericht [input] = [object Object]
+        └── ekQuoteFaktor [decision] = 0.1 -> 0 (changed) :: band-2
+            └── Eigenkapitalquote [ratio] = 0.8 -> 0.038461538461538464 (changed)
+                ├── Eigenkapital [input] = 100
+                └── Bilanzsumme [sum] = 125 -> 2600 (changed)
+                    ├── Eigenkapital [input] = 100
+                    └── Fremdkapital [input] = 25 -> 2500 (changed)"
   `);
+  console.log(freezeDraftAnalysis(compiledModel.model, analysis));
 });

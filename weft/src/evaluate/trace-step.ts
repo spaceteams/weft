@@ -7,8 +7,8 @@ export type TraceStep = {
   readonly keyMeta?: KeyMeta;
   readonly deps: readonly KeyId[];
   readonly ruleMeta?: RuleMeta;
-  readonly ruleKind: string;
+  readonly ruleSpec: Record<string, unknown>;
   readonly inputs: Record<KeyId, unknown>;
   readonly output: unknown;
-  readonly detail: unknown;
+  readonly detail: Record<string, unknown>;
 };

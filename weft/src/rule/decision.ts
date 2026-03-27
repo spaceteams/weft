@@ -1,8 +1,7 @@
-import type { Key } from "../key";
-import type { Equality, Order } from "../semantics/algebra";
+import type { AnyKey, Key } from "../key";
+import type { Equality, OpsDescriptor, Order } from "../semantics/algebra";
 import { type Rule, rule } from ".";
-
-export type Operand<T> = { kind: "value"; value: T } | { kind: "key"; key: Key<T> };
+import { type Operand, resolveOperand } from "./operand";
 
 export type EqualityPredicate<T> =
   | {
@@ -13,7 +12,7 @@ export type EqualityPredicate<T> =
   | {
       source: Key<T>;
       op: "in";
-      values: readonly T[];
+      values: readonly Operand<T>[];
     };
 
 export type OrderedPredicate<T> = {
@@ -28,7 +27,7 @@ export type RowId = string;
 export type DecisionRow<T, O, P extends Predicate<T> = Predicate<T>> = {
   id: RowId;
   when: readonly P[];
-  then: O;
+  output: Operand<O>;
   label?: string;
 };
 
@@ -38,10 +37,6 @@ export type DecisionTable<T, O, P extends Predicate<T> = Predicate<T>> = {
   default?: Operand<O>;
 };
 
-function resolveOperand<T>(operand: Operand<T>, get: (k: Key<T>) => T): T {
-  return operand.kind === "value" ? operand.value : get(operand.key);
-}
-
 export type RequiredOps<T, P extends Predicate<T>> =
   Extract<P, OrderedPredicate<T>> extends never ? Equality<T> : Order<T>;
 function evalPredicate<T, P extends Predicate<T>>(
@@ -50,7 +45,7 @@ function evalPredicate<T, P extends Predicate<T>>(
   get: (k: Key<T>) => T,
 ) {
   if (p.op === "in") {
-    return p.values.some((v) => ops.eq(get(p.source), v));
+    return p.values.some((v) => ops.eq(get(p.source), resolveOperand(v, get)));
   } else {
     const left = get(p.source);
     const right = resolveOperand(p.right, get);
@@ -70,16 +65,16 @@ function evalPredicate<T, P extends Predicate<T>>(
 }
 
 function predicateDependencies<T>(p: Predicate<T>): readonly Key<T>[] {
-  if ("right" in p && p.right.kind === "key") {
-    return [p.source, p.right.key];
+  if ("right" in p && p.right.__kind === "key") {
+    return [p.source, p.right];
   }
   return [p.source];
 }
 
 function decisionDependencies<T, O, P extends Predicate<T>>(
   table: DecisionTable<T, O, P>,
-): readonly Key<unknown>[] {
-  const deps = new Map<string, Key<unknown>>();
+): readonly AnyKey[] {
+  const deps = new Map<string, AnyKey>();
 
   for (const row of table.rows) {
     for (const predicate of row.when) {
@@ -89,8 +84,8 @@ function decisionDependencies<T, O, P extends Predicate<T>>(
     }
   }
 
-  if (table.default?.kind === "key") {
-    deps.set(table.default.key.id, table.default.key);
+  if (table.default?.__kind === "key") {
+    deps.set(table.default.id, table.default);
   }
 
   return [...deps.values()];
@@ -103,18 +98,39 @@ export type DecisionTableTraceDetail = {
   matchedRowLabel?: RowId;
   usedDefault: boolean;
 };
+export type DecisionTableSpec = {
+  op: "decision";
+  opsDescriptor: OpsDescriptor;
+  table: DecisionTable<unknown, unknown>;
+};
+function toSpec(ops: OpsDescriptor, table: DecisionTable<unknown, unknown>): DecisionTableSpec {
+  const spec: DecisionTableSpec = {
+    op: "decision",
+    opsDescriptor: { family: ops.family, version: ops.version },
+    table: {
+      name: table.name,
+      rows: table.rows,
+    },
+  };
+  if (table.default) {
+    spec.table.default = table.default;
+  }
+  return spec;
+}
+
 export function decision<T, O, P extends Predicate<T>>(
-  ops: RequiredOps<T, P>,
+  ops: OpsDescriptor & RequiredOps<T, P>,
   target: Key<O>,
   table: DecisionTable<T, O, P>,
 ): Rule<O> {
   return rule({
     target,
+    spec: toSpec(ops, table),
     deps: decisionDependencies(table),
     eval: (get) => {
       for (const row of table.rows) {
         if (row.when.every((p) => evalPredicate(p, ops, get))) {
-          const output = row.then;
+          const output = resolveOperand(row.output, get);
           const detail: DecisionTableTraceDetail = {
             op: "decision",
             tableName: table.name,

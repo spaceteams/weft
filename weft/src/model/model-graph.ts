@@ -1,5 +1,5 @@
-import type { Key, KeyId } from "../key";
-import type { CompiledModel } from "../model";
+import type { AnyKey, KeyId } from "../key";
+import type { CompiledModel } from ".";
 import { downstreamOf, upstreamOf } from "./model";
 
 export type ModelGraph = {
@@ -40,7 +40,7 @@ export function subgraph(model: CompiledModel, includedKeys: readonly KeyId[]): 
 }
 export function upstreamGraphOf(
   model: CompiledModel,
-  key: Key<unknown>,
+  key: AnyKey,
   options?: { includeTarget?: boolean },
 ): ModelGraph {
   const keys = new Set(upstreamOf(model, key));
@@ -51,7 +51,7 @@ export function upstreamGraphOf(
 }
 export function downstreamGraphOf(
   model: CompiledModel,
-  key: Key<unknown>,
+  key: AnyKey,
   options?: { includeTarget?: boolean },
 ): ModelGraph {
   const keys = new Set(downstreamOf(model, key));

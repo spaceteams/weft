@@ -1,5 +1,5 @@
 import type { FactBag } from "../facts";
-import type { Key, KeyId } from "../key";
+import type { AnyKey, Key, KeyId } from "../key";
 import type { CompiledModel } from "../model";
 import type { Resolver } from "../rule";
 import type { EvaluationResult, MissingReason } from "./evaluation-result";
@@ -36,7 +36,7 @@ export function evaluate(
     }
 
     const inputs: Record<string, unknown> = {};
-    const missingDeps: Key<unknown>[] = [];
+    const missingDeps: AnyKey[] = [];
     for (const dep of rule.deps) {
       if (!values.has(dep.id)) {
         if (mode === "strict") {
@@ -74,10 +74,10 @@ export function evaluate(
     trace.push({
       target,
       deps,
-      ruleKind: rule.kind,
+      ruleSpec: rule.spec,
       ruleMeta: ruleMeta,
       keyMeta: keyMeta,
-      detail,
+      detail: detail ?? {},
       inputs,
       output,
     });

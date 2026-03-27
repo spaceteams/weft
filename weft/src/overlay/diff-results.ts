@@ -1,7 +1,7 @@
 import type { EvaluationResult } from "../evaluate/evaluation-result";
-import { getDeclaredKeys } from "../explain/model";
 import type { KeyId } from "../key";
 import type { CompiledModel } from "../model";
+import { getDeclaredKeys } from "../model/model";
 
 export type ValueDelta =
   | { readonly key: KeyId; readonly kind: "added"; readonly after: unknown }
@@ -37,7 +37,7 @@ export function diffResults(
 
     const beforeValue = before.values.get(key);
     const afterValue = after.values.get(key);
-    const eq = model.keys.get(key)?.semantics?.eq ?? Object.is;
+    const eq = model.semantics.get(key)?.eq ?? Object.is;
 
     if (!eq(beforeValue, afterValue)) {
       deltas.push({ key, kind: "changed", before: beforeValue, after: afterValue });
