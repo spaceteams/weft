@@ -6,7 +6,6 @@ import {
   defaultNumberOps,
   defaultOps,
   evaluate,
-  freezeDraftAnalysis,
   inspectDiffTarget,
   inspectionNodeToAscii,
   inspectTraceTarget,

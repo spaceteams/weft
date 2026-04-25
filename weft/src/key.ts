@@ -11,6 +11,7 @@ export type Key<T> = {
   readonly __value?: T;
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: it is the point of that type
 export type AnyKey = Key<any>;
 
 export function key<T>(id: KeyId): Key<T> {
