@@ -8,3 +8,9 @@ export type OverlayedFacts = {
   readonly overlay: Overlay;
   readonly effective: FactBag;
 };
+
+export * from "./apply-overlay";
+export * from "./diff-group";
+export * from "./diff-results";
+export * from "./evaluate-overlay";
+export * from "./explain-diff";

@@ -222,5 +222,4 @@ it("evaluates drafts and explains the diff", () => {
                     ├── Eigenkapital [input] = 100
                     └── Fremdkapital [input] = 25 -> 2500 (changed)"
   `);
-  console.log(freezeDraftAnalysis(compiledModel.model, analysis));
 });

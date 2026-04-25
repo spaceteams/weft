@@ -21,3 +21,9 @@ export type CompiledModel = Model & {
   readonly depsByTarget: ReadonlyMap<KeyId, readonly KeyId[]>;
   readonly dependentsByKey: ReadonlyMap<KeyId, readonly KeyId[]>;
 };
+
+export * from "./compile-model";
+export * from "./create-model";
+export * from "./model";
+export * from "./model-graph";
+export * from "./snapshot-model";
