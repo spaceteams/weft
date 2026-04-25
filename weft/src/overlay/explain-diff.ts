@@ -1,6 +1,6 @@
+import type { TraceStep } from "../evaluate/trace-step";
 import type { KeyId } from "../key";
 import type { ValueDelta } from "./diff-results";
-import type { OverlayEvaluationResult } from "./evaluate-overlay";
 
 export type ExplainedDependency = {
   readonly key: KeyId;
@@ -14,8 +14,16 @@ export type Change = {
   readonly dependencies?: readonly ExplainedDependency[];
 };
 
+/**
+ * Explain each delta by resolving its trace dependencies and marking which
+ * ones also changed.
+ *
+ * Accepts any object carrying a `trace` — works with both live
+ * {@link OverlayEvaluationResult} and frozen artifacts that have a
+ * compatible trace array.
+ */
 export function explainDiffs(
-  result: OverlayEvaluationResult,
+  result: { readonly trace: readonly TraceStep[] },
   deltas: readonly ValueDelta[],
 ): readonly Change[] {
   const changedKeys = new Set(deltas.map((d) => d.key));

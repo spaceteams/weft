@@ -1,6 +1,6 @@
-import type { CompiledModel } from "../model";
+import type { ModelStructure } from "../model/model-structure";
 import type { ValueDelta } from "./diff-results";
-import type { OverlayEvaluationResult } from "./evaluate-overlay";
+import type { OriginMap } from "./evaluate-overlay";
 
 export type DiffGroup = {
   readonly label: string;
@@ -9,8 +9,14 @@ export type DiffGroup = {
 
 export type GroupedDiff = readonly DiffGroup[];
 
+/**
+ * Group deltas by their origin (overlay input vs derived).
+ *
+ * Accepts any object carrying an {@link OriginMap} — works with both live
+ * {@link OverlayEvaluationResult} and reconstructed origins from frozen data.
+ */
 export function groupDiffByOrigin(
-  result: OverlayEvaluationResult,
+  result: { readonly origins: OriginMap },
   deltas: readonly ValueDelta[],
 ): GroupedDiff {
   const overlayInputs: ValueDelta[] = [];
@@ -41,8 +47,14 @@ export function groupDiffByOrigin(
   return groups;
 }
 
+/**
+ * Group deltas by their key's metadata `group` field.
+ *
+ * Accepts any object with a `keyMeta` map — works with both live
+ * {@link CompiledModel} and hydrated frozen models.
+ */
 export function groupDiffByMetadataGroup(
-  model: CompiledModel,
+  model: Pick<ModelStructure, "keyMeta">,
   deltas: readonly ValueDelta[],
 ): GroupedDiff {
   const groups: Record<string, ValueDelta[]> = {};

@@ -66,8 +66,6 @@ export * from "./overlay/explain-diff";
 // ── Draft: lifecycle, analysis, and serialization ───────────────────────────
 
 export * from "./draft";
-export * from "./draft/analyze-draft";
-export * from "./draft/evaluate-draft";
 
 // ── Inspect: visualization and debugging ────────────────────────────────────
 
@@ -82,5 +80,6 @@ export * from "./inspect/inspection-node-to-ascii";
 export * from "./snapshot/canonicalize";
 export * from "./snapshot/canonicalizeDelta";
 export * from "./snapshot/canonicalizeFacts";
+export * from "./snapshot/canonicalizeTraceStep";
 export * from "./snapshot/canonicalizeValue";
 export * from "./snapshot/fingerprint";
