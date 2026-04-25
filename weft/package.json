@@ -8,6 +8,14 @@
   ],
   "exports": {
     ".": "./dist/index.mjs",
+    "./core": "./dist/core.mjs",
+    "./rules": "./dist/rules.mjs",
+    "./model": "./dist/model.mjs",
+    "./evaluate": "./dist/evaluate.mjs",
+    "./overlay": "./dist/overlay.mjs",
+    "./draft": "./dist/draft.mjs",
+    "./inspect": "./dist/inspect.mjs",
+    "./snapshot": "./dist/snapshot.mjs",
     "./package.json": "./package.json"
   },
   "scripts": {

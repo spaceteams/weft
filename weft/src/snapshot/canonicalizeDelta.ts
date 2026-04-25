@@ -1,8 +1,19 @@
+import type { KeyId } from "../key";
 import type { CompiledModel } from "../model";
 import type { ValueDelta } from "../overlay/diff-results";
+import type { CanonicalJson } from "./canonicalize";
 import { canonicalizeValue } from "./canonicalizeValue";
 
-export function canonicalizeDelta(model: CompiledModel, delta: ValueDelta): ValueDelta {
+export type CanonicalDelta =
+  | { readonly key: KeyId; readonly kind: "added"; readonly after: CanonicalJson }
+  | { readonly key: KeyId; readonly kind: "removed"; readonly before: CanonicalJson }
+  | {
+      readonly key: KeyId;
+      readonly kind: "changed";
+      readonly before: CanonicalJson;
+      readonly after: CanonicalJson;
+    };
+export function canonicalizeDelta(model: CompiledModel, delta: ValueDelta): CanonicalDelta {
   switch (delta.kind) {
     case "added":
       return {

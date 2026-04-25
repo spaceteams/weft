@@ -1,3 +1,6 @@
+export * from "./evaluation-result";
+export * from "./trace-step";
+
 import type { FactBag } from "../facts";
 import type { AnyKey, Key, KeyId } from "../key";
 import type { CompiledModel } from "../model";
