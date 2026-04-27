@@ -1,6 +1,7 @@
 import type { KeyId } from "../key";
 import type { KeyMeta } from "../key-meta";
 import type { RuleMeta } from "../rule/rule-meta";
+import { type CanonicalJson, canonicalize } from "../snapshot/canonicalize";
 import type { CompiledModel } from ".";
 import type { ModelStructure } from "./model-structure";
 
@@ -25,14 +26,26 @@ export type FrozenModel = {
   readonly dependentsByKey: Readonly<Record<KeyId, readonly KeyId[]>>;
   readonly keyMeta: Readonly<Record<KeyId, KeyMeta>>;
   readonly ruleMeta: Readonly<Record<KeyId, RuleMeta>>;
-  readonly ruleSpecs: Readonly<Record<KeyId, Record<string, unknown>>>;
+  readonly ruleSpecs: Readonly<Record<KeyId, Record<string, CanonicalJson>>>;
 };
 
 /**
  * Serialize a {@link CompiledModel} into a {@link FrozenModel} suitable for
  * JSON serialization and transport to a frontend or worker.
+ *
+ * Rule specs are canonicalized (keys sorted, values normalized) to ensure
+ * deterministic serialization and consistent fingerprinting.
  */
 export function freezeModel(model: CompiledModel): FrozenModel {
+  const ruleSpecs: Record<KeyId, Record<string, CanonicalJson>> = {};
+  for (const [key, spec] of model.ruleSpecs) {
+    const canonical: Record<string, CanonicalJson> = {};
+    for (const [k, v] of Object.entries(spec)) {
+      canonical[k] = canonicalize(v);
+    }
+    ruleSpecs[key] = canonical;
+  }
+
   return {
     inputKeys: [...model.inputKeys],
     orderedRuleTargets: [...model.orderedRuleTargets],
@@ -40,7 +53,7 @@ export function freezeModel(model: CompiledModel): FrozenModel {
     dependentsByKey: Object.fromEntries(model.dependentsByKey),
     keyMeta: Object.fromEntries(model.keyMeta),
     ruleMeta: Object.fromEntries(model.ruleMeta),
-    ruleSpecs: Object.fromEntries(model.ruleSpecs),
+    ruleSpecs,
   };
 }
 
