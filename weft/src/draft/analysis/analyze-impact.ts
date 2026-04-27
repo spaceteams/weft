@@ -1,6 +1,6 @@
 import type { KeyId } from "../../key";
 import type { ModelStructure } from "../../model/model-structure";
-import type { ValueDelta } from "../../overlay/diff-results";
+
 import type { OriginMap } from "../../overlay/evaluate-overlay";
 
 export type ImpactAnalysis = {
@@ -23,7 +23,7 @@ export type ImpactAnalysis = {
 export function analyzeImpact(
   model: ModelStructure,
   origins: OriginMap,
-  deltas: readonly ValueDelta[],
+  deltas: readonly { readonly key: KeyId }[],
 ): ImpactAnalysis {
   const changed = new Set(deltas.map((d) => d.key));
 

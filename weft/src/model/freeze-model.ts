@@ -25,6 +25,7 @@ export type FrozenModel = {
   readonly dependentsByKey: Readonly<Record<KeyId, readonly KeyId[]>>;
   readonly keyMeta: Readonly<Record<KeyId, KeyMeta>>;
   readonly ruleMeta: Readonly<Record<KeyId, RuleMeta>>;
+  readonly ruleSpecs: Readonly<Record<KeyId, Record<string, unknown>>>;
 };
 
 /**
@@ -39,6 +40,7 @@ export function freezeModel(model: CompiledModel): FrozenModel {
     dependentsByKey: Object.fromEntries(model.dependentsByKey),
     keyMeta: Object.fromEntries(model.keyMeta),
     ruleMeta: Object.fromEntries(model.ruleMeta),
+    ruleSpecs: Object.fromEntries(model.ruleSpecs),
   };
 }
 
@@ -55,5 +57,6 @@ export function hydrateModel(frozen: FrozenModel): ModelStructure {
     dependentsByKey: new Map(Object.entries(frozen.dependentsByKey)),
     keyMeta: new Map(Object.entries(frozen.keyMeta)),
     ruleMeta: new Map(Object.entries(frozen.ruleMeta)),
+    ruleSpecs: new Map(Object.entries(frozen.ruleSpecs)),
   };
 }

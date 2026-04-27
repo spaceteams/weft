@@ -157,6 +157,10 @@ export function compileModel(model: Model): CompileResult {
     ...model.rules.map((r): [KeyId, AnyKey] => [r.target.id, r.target]),
   ];
 
+  const ruleSpecs = new Map<string, Record<string, unknown>>(
+    [...ruleByTarget.entries()].map(([k, r]) => [k, r.spec]),
+  );
+
   return {
     ok: true,
     issues,
@@ -172,6 +176,7 @@ export function compileModel(model: Model): CompileResult {
       ruleByTarget,
       depsByTarget,
       dependentsByKey,
+      ruleSpecs,
     },
   };
 }
