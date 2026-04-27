@@ -1,5 +1,12 @@
 # @spaceteams/weft-examples
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [8d15565]
+  - @spaceteams/weft@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

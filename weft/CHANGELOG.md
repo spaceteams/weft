@@ -1,5 +1,11 @@
 # @spaceteams/weft
 
+## 0.2.2
+
+### Patch Changes
+
+- 8d15565: add analyze frozen draft helper
+
 ## 0.2.1
 
 ### Patch Changes
