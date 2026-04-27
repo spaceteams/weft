@@ -9,8 +9,8 @@ export type ExplainedDependency = {
   readonly changed: boolean;
 };
 
-export type Change = {
-  readonly delta: ValueDelta;
+export type Change<D = ValueDelta> = {
+  readonly delta: D;
   readonly dependencies?: readonly ExplainedDependency[];
 };
 
@@ -22,10 +22,10 @@ export type Change = {
  * {@link OverlayEvaluationResult} and frozen artifacts that have a
  * compatible trace array.
  */
-export function explainDiffs(
+export function explainDiffs<D extends { readonly key: KeyId } = ValueDelta>(
   result: { readonly trace: readonly TraceStep[] },
-  deltas: readonly ValueDelta[],
-): readonly Change[] {
+  deltas: readonly D[],
+): readonly Change<D>[] {
   const changedKeys = new Set(deltas.map((d) => d.key));
   const traceByTarget = new Map(result.trace.map((step) => [step.target, step]));
 

@@ -20,6 +20,7 @@ export type CompiledModel = Model & {
   readonly ruleByTarget: ReadonlyMap<KeyId, Rule<unknown>>;
   readonly depsByTarget: ReadonlyMap<KeyId, readonly KeyId[]>;
   readonly dependentsByKey: ReadonlyMap<KeyId, readonly KeyId[]>;
+  readonly ruleSpecs: ReadonlyMap<KeyId, Record<string, unknown>>;
 };
 
 export * from "./compile-model";

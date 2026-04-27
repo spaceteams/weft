@@ -16,4 +16,9 @@ export type ModelStructure = {
   readonly dependentsByKey: ReadonlyMap<KeyId, readonly KeyId[]>;
   readonly keyMeta: ReadonlyMap<KeyId, KeyMeta>;
   readonly ruleMeta: ReadonlyMap<KeyId, RuleMeta>;
+  /**
+   * Optional map from rule target to its spec object.
+   * Enables {@link inspectModelTarget} on hydrated frozen models.
+   */
+  readonly ruleSpecs?: ReadonlyMap<KeyId, Record<string, unknown>>;
 };
