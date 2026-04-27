@@ -1,5 +1,16 @@
 # @spaceteams/weft-examples
 
+## 0.2.0
+
+### Minor Changes
+
+- 759a908: better api surface and frozen artifacts
+
+### Patch Changes
+
+- Updated dependencies [759a908]
+  - @spaceteams/weft@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes

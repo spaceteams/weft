@@ -1,5 +1,11 @@
 # @spaceteams/weft
 
+## 0.2.0
+
+### Minor Changes
+
+- 759a908: better api surface and frozen artifacts
+
 ## 0.1.0
 
 ### Minor Changes
