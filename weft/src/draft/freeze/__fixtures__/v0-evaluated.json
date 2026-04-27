@@ -1,0 +1,93 @@
+{
+  "draftId": "v0-fixture",
+  "snapshot": {
+    "modelFingerprint": "37c6f48409db98ecc4875d0fe586cd5f08de77bcfba3294bb7d9f3423098a113",
+    "baseFingerprint": "ecc2e24067882c3e6e49175e66e350c684b0e2d9e0ddc18aec8ef158aa87431f",
+    "overlayFingerprint": "c62f337f856c83105d16ef728b529c97441d1437c97a4f81b3cde20c2ffa4dfa",
+    "analysisFingerprint": "0a79883194a5cc91a96e3a7cf4a8fd8527db06cc8e7fee36a7314f181a58bd2f",
+    "createdAt": "2025-01-01T00:00:00.000Z"
+  },
+  "base": {
+    "equity": 100,
+    "liabilities": 25
+  },
+  "overlay": {
+    "liabilities": 10
+  },
+  "effective": {
+    "equity": 100,
+    "liabilities": 10
+  },
+  "values": {
+    "equity": 100,
+    "equityRatio": 0.9090909090909091,
+    "liabilities": 10,
+    "total": 110
+  },
+  "deltas": [
+    {
+      "key": "liabilities",
+      "kind": "changed",
+      "before": 25,
+      "after": 10
+    },
+    {
+      "key": "total",
+      "kind": "changed",
+      "before": 125,
+      "after": 110
+    },
+    {
+      "key": "equityRatio",
+      "kind": "changed",
+      "before": 0.8,
+      "after": 0.9090909090909091
+    }
+  ],
+  "trace": [
+    {
+      "target": "total",
+      "deps": ["equity", "liabilities"],
+      "ruleMeta": {
+        "label": "Bilanzsumme"
+      },
+      "ruleSpec": {
+        "op": "sum",
+        "opsDescriptor": {
+          "family": "default/number",
+          "version": "1"
+        },
+        "deps": ["equity", "liabilities"]
+      },
+      "inputs": {
+        "equity": 100,
+        "liabilities": 10
+      },
+      "output": 110,
+      "detail": {}
+    },
+    {
+      "target": "equityRatio",
+      "deps": ["equity", "total"],
+      "ruleMeta": {
+        "label": "Eigenkapitalquote"
+      },
+      "ruleSpec": {
+        "op": "ratio",
+        "opsDescriptor": {
+          "family": "default/number",
+          "version": "1"
+        },
+        "numerator": "equity",
+        "denominator": "total"
+      },
+      "inputs": {
+        "equity": 100,
+        "total": 110
+      },
+      "output": 0.9090909090909091,
+      "detail": {}
+    }
+  ],
+  "frozenAt": "2025-01-01T00:00:00.000Z"
+}

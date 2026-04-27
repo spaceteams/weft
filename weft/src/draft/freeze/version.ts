@@ -1,0 +1,1 @@
+export const CURRENT_FROZEN_VERSION = 1;

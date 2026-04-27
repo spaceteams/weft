@@ -24,6 +24,8 @@ export type CompiledModel = Model & {
 
 export * from "./compile-model";
 export * from "./create-model";
+export * from "./freeze-model";
 export * from "./model";
 export * from "./model-graph";
+export * from "./model-structure";
 export * from "./snapshot-model";

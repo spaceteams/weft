@@ -1,21 +1,21 @@
-import type { AnyKey, KeyId } from "../key";
-import type { CompiledModel } from ".";
+import type { KeyId } from "../key";
+import type { ModelStructure } from "./model-structure";
 
-export function getDependencies(model: CompiledModel, key: AnyKey): readonly KeyId[] {
-  return model.depsByTarget.get(key.id) ?? [];
+export function getDependencies(model: ModelStructure, key: KeyId): readonly KeyId[] {
+  return model.depsByTarget.get(key) ?? [];
 }
 
-export function getDependents(model: CompiledModel, key: AnyKey): readonly KeyId[] {
-  return model.dependentsByKey.get(key.id) ?? [];
+export function getDependents(model: ModelStructure, key: KeyId): readonly KeyId[] {
+  return model.dependentsByKey.get(key) ?? [];
 }
 
-export function getDeclaredKeys(model: CompiledModel): readonly KeyId[] {
+export function getDeclaredKeys(model: ModelStructure): readonly KeyId[] {
   return [...model.inputKeys, ...model.orderedRuleTargets];
 }
 
-export function upstreamOf(model: CompiledModel, key: AnyKey): readonly KeyId[] {
+export function upstreamOf(model: ModelStructure, key: KeyId): readonly KeyId[] {
   const visited = new Set<KeyId>();
-  const stack = [...(model.depsByTarget.get(key.id) ?? [])];
+  const stack = [...(model.depsByTarget.get(key) ?? [])];
 
   while (stack.length > 0) {
     const current = stack.pop()!;
@@ -33,9 +33,9 @@ export function upstreamOf(model: CompiledModel, key: AnyKey): readonly KeyId[] 
   return sortKeysByModelOrder(model, visited);
 }
 
-export function downstreamOf(model: CompiledModel, key: AnyKey): readonly KeyId[] {
+export function downstreamOf(model: ModelStructure, key: KeyId): readonly KeyId[] {
   const visited = new Set<KeyId>();
-  const stack = [...(model.dependentsByKey.get(key.id) ?? [])];
+  const stack = [...(model.dependentsByKey.get(key) ?? [])];
 
   while (stack.length > 0) {
     const current = stack.pop()!;
@@ -54,9 +54,9 @@ export function downstreamOf(model: CompiledModel, key: AnyKey): readonly KeyId[
 }
 
 export function sortKeysByModelOrder(
-  model: CompiledModel,
+  model: ModelStructure,
   keys: Iterable<KeyId>,
-): readonly string[] {
+): readonly KeyId[] {
   const keySet = new Set(keys);
   const ordered = [
     ...model.inputKeys.filter((k) => keySet.has(k)),

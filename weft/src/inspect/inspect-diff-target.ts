@@ -1,13 +1,23 @@
 import type { TraceStep } from "../evaluate/trace-step";
 import type { KeyId } from "../key";
-import type { CompiledModel } from "../model";
-import type { OverlayEvaluationResult } from "../overlay/evaluate-overlay";
+import type { ModelStructure } from "../model/model-structure";
 import type { Change } from "../overlay/explain-diff";
 import type { InspectionNode } from "./inspection-node";
 
+/**
+ * Build an {@link InspectionNode} tree for a diff target, showing values,
+ * changes, and the dependency structure.
+ *
+ * The `result` parameter only needs a `trace` — any object that carries
+ * `{ trace: readonly TraceStep[] }` works, including both live
+ * `OverlayEvaluationResult` and frozen artifacts like `FrozenEvaluatedDraft`.
+ *
+ * The `model` parameter accepts any {@link ModelStructure} — works with both
+ * live {@link CompiledModel} and hydrated frozen models.
+ */
 export function inspectDiffTarget(
-  model: CompiledModel,
-  result: OverlayEvaluationResult,
+  model: ModelStructure,
+  result: { trace: readonly TraceStep[] },
   changes: readonly Change[],
   target: KeyId,
 ): InspectionNode {

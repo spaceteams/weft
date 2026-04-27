@@ -3,6 +3,7 @@ import type { EvaluationResult } from "../evaluate/evaluation-result";
 import type { FactBag } from "../facts";
 import type { KeyId } from "../key";
 import type { CompiledModel } from "../model";
+import type { ModelStructure } from "../model/model-structure";
 import type { Overlay, OverlayedFacts } from ".";
 import { applyOverlay } from "./apply-overlay";
 
@@ -46,4 +47,25 @@ export function evaluateOverlay(
     overlayedFacts: facts,
     origins,
   };
+}
+
+/**
+ * Reconstruct an {@link OriginMap} from structural model information and
+ * the set of overlay keys — without running evaluation.
+ *
+ * This enables impact analysis and diff grouping on the frontend using only
+ * a hydrated {@link ModelStructure} and the overlay key set from a frozen artifact.
+ */
+export function deriveOrigins(model: ModelStructure, overlayKeys: Iterable<KeyId>): OriginMap {
+  const overlaySet = new Set(overlayKeys);
+  const origins = new Map<KeyId, ValueOrigin>();
+
+  for (const key of model.inputKeys) {
+    origins.set(key, overlaySet.has(key) ? { kind: "overlay" } : { kind: "base" });
+  }
+  for (const key of model.orderedRuleTargets) {
+    origins.set(key, { kind: "derived" });
+  }
+
+  return origins;
 }

@@ -1,10 +1,16 @@
 import type { TraceStep } from "../evaluate/trace-step";
 import type { KeyId } from "../key";
-import type { CompiledModel } from "../model";
+import type { ModelStructure } from "../model/model-structure";
 import type { InspectionNode } from "./inspection-node";
 
+/**
+ * Build an {@link InspectionNode} tree from evaluation trace data.
+ *
+ * The `model` parameter accepts any {@link ModelStructure} — works with both
+ * live {@link CompiledModel} and hydrated frozen models.
+ */
 export function inspectTraceTarget(
-  model: CompiledModel,
+  model: ModelStructure,
   trace: readonly TraceStep[],
   target: KeyId,
 ): InspectionNode {
