@@ -83,3 +83,7 @@ export * from "./snapshot/canonicalizeFacts";
 export * from "./snapshot/canonicalizeTraceStep";
 export * from "./snapshot/canonicalizeValue";
 export * from "./snapshot/fingerprint";
+
+// ── Validate: schema validation and Standard Schema ─────────────────────────
+
+export * from "./validate";

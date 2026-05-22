@@ -11,6 +11,7 @@ export default defineConfig({
     draft: "src/draft/index.ts",
     inspect: "src/inspect/index.ts",
     snapshot: "src/snapshot/index.ts",
+    validate: "src/validate/index.ts",
   },
   dts: {
     tsgo: true,

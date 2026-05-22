@@ -1,6 +1,7 @@
 import type { KeyId } from "../key";
 import type { KeyMeta } from "../key-meta";
 import type { RuleMeta } from "../rule/rule-meta";
+import type { ValidationSeverity } from "../validate/validation-result";
 
 /**
  * The structural subset of a compiled model that enables graph traversal,
@@ -21,4 +22,27 @@ export type ModelStructure = {
    * Enables {@link inspectModelTarget} on hydrated frozen models.
    */
   readonly ruleSpecs?: ReadonlyMap<KeyId, Record<string, unknown>>;
+  /**
+   * Optional map from key ID to its JSON Schema (from StandardJSONSchemaV1).
+   * Present on hydrated frozen models that included JSON Schema metadata.
+   * Enables client-side validation without round-trips to the server.
+   */
+  readonly jsonSchemas?: ReadonlyMap<
+    KeyId,
+    {
+      readonly schema: Record<string, unknown>;
+      readonly severity?: ValidationSeverity;
+    }
+  >;
+  /**
+   * Optional array of frozen cross-field constraint metadata.
+   * Contains structural information about constraints for client-side analysis.
+   * Only constraints expressible as JSON Schema include the `jsonSchema` field.
+   */
+  readonly constraints?: ReadonlyArray<{
+    readonly name: string;
+    readonly affectedKeys?: readonly KeyId[];
+    readonly severity?: ValidationSeverity;
+    readonly jsonSchema?: Record<string, unknown>;
+  }>;
 };
