@@ -33,10 +33,21 @@ export * from "./value";
 // ── Rules: computation specifications ───────────────────────────────────────
 
 export * from "./rule";
+export * from "./rule/abs";
+export * from "./rule/algebraic-rules";
+export * from "./rule/clamp";
+export * from "./rule/conditional";
 export * from "./rule/decision";
+export * from "./rule/difference";
+export * from "./rule/financial";
+export * from "./rule/min-max";
+export * from "./rule/negate";
+export * from "./rule/numeric-rules";
 export * from "./rule/operand";
+export * from "./rule/product";
 export * from "./rule/projection";
 export * from "./rule/ratio";
+export * from "./rule/round";
 export * from "./rule/rule-meta";
 export * from "./rule/scale";
 export * from "./rule/sum";

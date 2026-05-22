@@ -26,6 +26,10 @@ export type Divisible<T, R> = {
   div(a: T, b: T): R;
 };
 
+export type Exponential<T> = {
+  pow(base: T, exponent: T): T;
+};
+
 export const defaultOps: OpsDescriptor & Equality<unknown> = {
   family: "default/unknown",
   version: "1",
@@ -36,7 +40,8 @@ export const defaultNumberOps: OpsDescriptor &
   Order<number> &
   Additive<number> &
   Scalable<number, number> &
-  Divisible<number, number> = {
+  Divisible<number, number> &
+  Exponential<number> = {
   family: "default/number",
   version: "1",
   eq: (a, b) => a === b,
@@ -47,4 +52,5 @@ export const defaultNumberOps: OpsDescriptor &
   one: () => 1,
   scale: (value, factor) => value * factor,
   div: (a, b) => a / b,
+  pow: (base, exponent) => base ** exponent,
 };

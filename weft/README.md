@@ -307,14 +307,38 @@ const result = await factsSchema["~standard"].validate(requestBody);
 
 Built-in rule factories for common computation patterns:
 
+### Arithmetic (ops-aware)
+
+| Factory | Description | Algebra Trait |
+| --- | --- | --- |
+| `sum(ops, target, deps)` | Sum of N dependencies | `Additive<T>` |
+| `difference(ops, target, a, b)` | Subtraction: a − b | `Additive<T>` |
+| `negate(ops, target, source)` | Unary negation: −value | `Additive<T>` |
+| `product(ops, target, factors)` | Multiplication of N factors | `Scalable<T, T>` |
+| `scale(ops, target, base, factor)` | Multiply value by factor | `Scalable<T, S>` |
+| `ratio(ops, target, numerator, denominator)` | Division of two keys | `Divisible<T, R>` |
+| `minimum(ops, target, deps)` | Minimum of N keys | `Order<T>` |
+| `maximum(ops, target, deps)` | Maximum of N keys | `Order<T>` |
+| `abs(ops, target, source)` | Absolute value | `Order<T> & Additive<T>` |
+| `clamp(ops, target, value, min, max)` | Bound value between min/max | `Order<T>` |
+| `weightedSum(ops, target, entries)` | Weighted sum with per-entry weights | `Additive<T> & Scalable<T, S>` |
+
+### Number-specific
+
 | Factory | Description |
 | --- | --- |
-| `sum(ops, target, deps)` | Sum of dependencies |
-| `ratio(ops, target, numerator, denominator)` | Division of two keys |
-| `scale(ops, target, base, factor)` | Multiplication of two keys |
-| `weightedSum(ops, target, entries)` | Weighted sum with per-entry weights |
-| `projection(ops, target, base, years)` | Time-based projection |
+| `round(target, source, options?)` | Rounding (round/floor/ceil/trunc) with decimal precision |
+| `futureValue(target, rate, nper, pmt, pv)` | Financial future value (FV) |
+| `presentValue(target, rate, nper, pmt, fv)` | Financial present value (PV) |
+| `annuityPayment(target, rate, nper, pv)` | Financial annuity payment (PMT) |
+
+### Logic & Control Flow
+
+| Factory | Description |
+| --- | --- |
+| `conditional(target, condition, then, otherwise)` | If/then/else branching |
 | `decision(target, deps, table)` | Lookup table / decision matrix |
+| `projection(ops, target, base, years)` | Time-based projection |
 
 ### Custom Rules
 
