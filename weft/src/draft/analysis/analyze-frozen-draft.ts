@@ -7,6 +7,7 @@ import type { Change } from "../../overlay/explain-diff";
 import { explainDiffs } from "../../overlay/explain-diff";
 import type { CanonicalJson } from "../../snapshot/canonicalize";
 import type { CanonicalDelta } from "../../snapshot/canonicalizeDelta";
+import type { ValidationResult } from "../../validate/validation-result";
 import type { FrozenEvaluatedDraft } from "../freeze/freeze-evaluated-draft";
 import { analyzeImpact, type ImpactAnalysis } from "./analyze-impact";
 
@@ -21,6 +22,9 @@ import { analyzeImpact, type ImpactAnalysis } from "./analyze-impact";
  * grouped diffs, explained changes) but derived entirely from frozen/canonical
  * data without requiring a live {@link CompiledModel}.
  *
+ * When `validation` is present, it contains client-side validation results
+ * derived from JSON Schema metadata in the frozen model.
+ *
  * Excludes `evaluated` (requires live evaluation) and `normalizationIssues`
  * (requires live model validation).
  */
@@ -29,6 +33,7 @@ export type ClientDraftAnalysis = {
   readonly groupedDiffs: readonly DiffGroup<CanonicalDelta>[];
   readonly changes: readonly Change<CanonicalDelta>[];
   readonly values: Record<string, CanonicalJson>;
+  readonly validation?: ValidationResult;
 };
 
 // ---------------------------------------------------------------------------

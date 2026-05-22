@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@spaceteams/weft": "workspace:*"
+  },
+  "devDependencies": {
+    "valibot": "1.4.0"
   }
 }

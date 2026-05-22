@@ -161,6 +161,20 @@ export function compileModel(model: Model): CompileResult {
     [...ruleByTarget.entries()].map(([k, r]) => [k, r.spec]),
   );
 
+  // Validate constraint deps
+  for (const c of model.constraints) {
+    for (const dep of c.deps) {
+      if (!knownKeys.has(dep.id)) {
+        issues.push({
+          level: "warn",
+          code: "MISSING_DEPENDENCY",
+          message: `Constraint "${c.name}" depends on unknown key "${dep.id}".`,
+          keys: [dep.id],
+        });
+      }
+    }
+  }
+
   return {
     ok: true,
     issues,
@@ -171,6 +185,8 @@ export function compileModel(model: Model): CompileResult {
       rules: model.rules,
       keyMeta: model.keyMeta,
       ruleMeta: model.ruleMeta,
+      schemas: model.schemas,
+      constraints: model.constraints,
       inputKeys: [...inputKeys],
       orderedRuleTargets,
       ruleByTarget,

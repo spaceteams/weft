@@ -2,6 +2,7 @@ import type { KeyId } from "../key";
 import type { KeyMeta } from "../key-meta";
 import type { RuleMeta } from "../rule/rule-meta";
 import { type CanonicalJson, canonicalize } from "../snapshot/canonicalize";
+import type { ValidationSeverity } from "../validate/validation-result";
 import type { CompiledModel } from ".";
 import type { ModelStructure } from "./model-structure";
 
@@ -27,6 +28,21 @@ export type FrozenModel = {
   readonly keyMeta: Readonly<Record<KeyId, KeyMeta>>;
   readonly ruleMeta: Readonly<Record<KeyId, RuleMeta>>;
   readonly ruleSpecs: Readonly<Record<KeyId, Record<string, CanonicalJson>>>;
+  readonly jsonSchemas?: Readonly<
+    Record<
+      KeyId,
+      {
+        readonly schema: Record<string, CanonicalJson>;
+        readonly severity?: ValidationSeverity;
+      }
+    >
+  >;
+  readonly constraints?: ReadonlyArray<{
+    readonly name: string;
+    readonly affectedKeys: readonly KeyId[];
+    readonly severity?: ValidationSeverity;
+    readonly jsonSchema?: Record<string, CanonicalJson>;
+  }>;
 };
 
 /**
@@ -46,7 +62,66 @@ export function freezeModel(model: CompiledModel): FrozenModel {
     ruleSpecs[key] = canonical;
   }
 
-  return {
+  // Freeze JSON Schemas from StandardJSONSchemaV1-conforming schemas
+  let jsonSchemas:
+    | Record<KeyId, { schema: Record<string, CanonicalJson>; severity?: ValidationSeverity }>
+    | undefined;
+  for (const [keyId, keySchema] of model.schemas) {
+    const standard = keySchema.schema["~standard"] as unknown as Record<string, unknown>;
+    if ("jsonSchema" in standard) {
+      try {
+        const converter = standard.jsonSchema as {
+          input: (options: { target: string }) => Record<string, unknown>;
+        };
+        const raw = converter.input({ target: "draft-2020-12" });
+        const schema: Record<string, CanonicalJson> = {};
+        for (const [k, v] of Object.entries(raw)) {
+          schema[k] = canonicalize(v);
+        }
+        if (!jsonSchemas) {
+          jsonSchemas = {};
+        }
+        const entry: { schema: Record<string, CanonicalJson>; severity?: ValidationSeverity } = {
+          schema,
+        };
+        if (keySchema.severity) {
+          (entry as { severity?: ValidationSeverity }).severity = keySchema.severity;
+        }
+        jsonSchemas[keyId] = entry;
+      } catch {
+        // Silently skip — library does not support the requested target
+      }
+    }
+  }
+
+  // Freeze constraints
+  let constraints:
+    | Array<{
+        name: string;
+        affectedKeys: readonly KeyId[];
+        severity?: ValidationSeverity;
+        jsonSchema?: Record<string, CanonicalJson>;
+      }>
+    | undefined;
+  if (model.constraints.length > 0) {
+    constraints = model.constraints.map((c) => {
+      const entry: {
+        name: string;
+        affectedKeys: readonly KeyId[];
+        severity?: ValidationSeverity;
+        jsonSchema?: Record<string, CanonicalJson>;
+      } = {
+        name: c.name,
+        affectedKeys: c.deps.map((dep) => dep.id),
+      };
+      if (c.severity) {
+        entry.severity = c.severity;
+      }
+      return entry;
+    });
+  }
+
+  const result: FrozenModel = {
     inputKeys: [...model.inputKeys],
     orderedRuleTargets: [...model.orderedRuleTargets],
     depsByTarget: Object.fromEntries(model.depsByTarget),
@@ -55,6 +130,15 @@ export function freezeModel(model: CompiledModel): FrozenModel {
     ruleMeta: Object.fromEntries(model.ruleMeta),
     ruleSpecs,
   };
+
+  if (jsonSchemas) {
+    (result as { jsonSchemas?: typeof jsonSchemas }).jsonSchemas = jsonSchemas;
+  }
+  if (constraints) {
+    (result as { constraints?: typeof constraints }).constraints = constraints;
+  }
+
+  return result;
 }
 
 /**
@@ -63,7 +147,7 @@ export function freezeModel(model: CompiledModel): FrozenModel {
  * and inspection functions.
  */
 export function hydrateModel(frozen: FrozenModel): ModelStructure {
-  return {
+  const result: ModelStructure = {
     inputKeys: frozen.inputKeys,
     orderedRuleTargets: frozen.orderedRuleTargets,
     depsByTarget: new Map(Object.entries(frozen.depsByTarget)),
@@ -72,4 +156,15 @@ export function hydrateModel(frozen: FrozenModel): ModelStructure {
     ruleMeta: new Map(Object.entries(frozen.ruleMeta)),
     ruleSpecs: new Map(Object.entries(frozen.ruleSpecs)),
   };
+
+  if (frozen.jsonSchemas) {
+    (result as { jsonSchemas?: ModelStructure["jsonSchemas"] }).jsonSchemas = new Map(
+      Object.entries(frozen.jsonSchemas),
+    );
+  }
+  if (frozen.constraints) {
+    (result as { constraints?: ModelStructure["constraints"] }).constraints = frozen.constraints;
+  }
+
+  return result;
 }
