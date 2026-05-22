@@ -1,5 +1,17 @@
 # @spaceteams/weft-examples
 
+## 0.3.0
+
+### Minor Changes
+
+- c9c71c6: validation capabilities
+
+### Patch Changes
+
+- Updated dependencies [c9c71c6]
+- Updated dependencies [c9c71c6]
+  - @spaceteams/weft@0.3.0
+
 ## 0.2.2
 
 ### Patch Changes
