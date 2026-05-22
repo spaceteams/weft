@@ -1,5 +1,15 @@
 # @spaceteams/weft
 
+## 0.3.0
+
+### Minor Changes
+
+- c9c71c6: validation capabilities
+
+### Patch Changes
+
+- c9c71c6: add analyze frozen draft helper
+
 ## 0.2.2
 
 ### Patch Changes
