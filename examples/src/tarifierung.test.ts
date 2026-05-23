@@ -2,18 +2,18 @@ import {
   analyzeDraft,
   compileModel,
   createModel,
-  decision,
   defaultNumberOps,
-  defaultOps,
   evaluate,
   inspectDiffTarget,
   inspectionNodeToAscii,
   inspectTraceTarget,
   key,
+  match,
   projection,
   ratio,
   sum,
   value,
+  when,
 } from "@spaceteams/weft";
 import { expect, it } from "vitest";
 
@@ -51,29 +51,17 @@ const umsatzrendite = key<number>("umsatzrendite");
 m.input(umsatzrenditeUkv, { label: "Umsatzrendite UKV" });
 m.input(umsatzrenditeGkv, { label: "Umsatzrendite GKV" });
 m.rule(
-  decision(defaultOps, umsatzrendite, {
+  match(umsatzrendite, {
     name: "umsatzrendite",
     rows: [
       {
         id: "ukv",
-        when: [
-          {
-            op: "eq",
-            source: guvGliederung,
-            right: value("UKV"),
-          },
-        ],
+        when: [when(guvGliederung).eq("UKV")],
         output: umsatzrenditeUkv,
       },
       {
         id: "gkv",
-        when: [
-          {
-            op: "eq",
-            source: guvGliederung,
-            right: value("GKV"),
-          },
-        ],
+        when: [when(guvGliederung).eq("GKV")],
         output: umsatzrenditeGkv,
       },
     ],
@@ -82,22 +70,22 @@ m.rule(
 
 const ekQuoteFaktor = key<number>("ekQuoteFaktor");
 m.rule(
-  decision(defaultNumberOps, ekQuoteFaktor, {
+  match(ekQuoteFaktor, {
     name: "ekFaktorTable",
     rows: [
       {
         id: "band-1",
-        when: [{ op: "gte", source: ekQuote, right: value(0.2) }],
+        when: [when(ekQuote).gte(0.2)],
         output: value(0.1),
       },
       {
         id: "band-2",
-        when: [{ op: "gt", source: ekQuote, right: value(-0.2) }],
+        when: [when(ekQuote).gt(-0.2)],
         output: value(0.0),
       },
       {
         id: "band-3",
-        when: [{ op: "lte", source: ekQuote, right: value(-0.2) }],
+        when: [when(ekQuote).lte(-0.2)],
         output: value(-0.1),
       },
     ],
@@ -106,22 +94,22 @@ m.rule(
 
 const umsatzrenditeFaktor = key<number>("umsatzrenditeFaktor");
 m.rule(
-  decision(defaultNumberOps, umsatzrenditeFaktor, {
+  match(umsatzrenditeFaktor, {
     name: "urFaktorTable",
     rows: [
       {
         id: "band-1",
-        when: [{ op: "gte", source: umsatzrendite, right: value(0.2) }],
+        when: [when(umsatzrendite).gte(0.2)],
         output: value(0.1),
       },
       {
         id: "band-2",
-        when: [{ op: "gt", source: umsatzrendite, right: value(-0.2) }],
+        when: [when(umsatzrendite).gt(-0.2)],
         output: value(0.0),
       },
       {
         id: "band-3",
-        when: [{ op: "lte", source: umsatzrendite, right: value(-0.2) }],
+        when: [when(umsatzrendite).lte(-0.2)],
         output: value(0.1),
       },
     ],
@@ -162,11 +150,11 @@ it("evaluates", () => {
   ).toMatchInlineSnapshot(`
     "└── tarifierungsFaktor [sum] = 0.5
         ├── BaseFaktor [input] = 0.4
-        ├── umsatzrenditeFaktor [decision] = 0 :: band-2
-        │   └── umsatzrendite [decision] = 0.1 :: ukv
+        ├── umsatzrenditeFaktor [match] = 0 :: band-2
+        │   └── umsatzrendite [match] = 0.1 :: ukv
         │       └── GUV [project] = UKV
         │           └── Finanzbericht [input] = [object Object]
-        └── ekQuoteFaktor [decision] = 0.1 :: band-1
+        └── ekQuoteFaktor [match] = 0.1 :: band-1
             └── Eigenkapitalquote [ratio] = 0.8
                 ├── Eigenkapital [input] = 100
                 └── Bilanzsumme [sum] = 125
@@ -210,11 +198,11 @@ it("evaluates drafts and explains the diff", () => {
   ).toMatchInlineSnapshot(`
     "└── tarifierungsFaktor [sum] = 0.5 -> 0.4 (changed)
         ├── BaseFaktor [input] = 0.4
-        ├── umsatzrenditeFaktor [decision] = 0 :: band-2
-        │   └── umsatzrendite [decision] = 0.1 :: ukv
+        ├── umsatzrenditeFaktor [match] = 0 :: band-2
+        │   └── umsatzrendite [match] = 0.1 :: ukv
         │       └── GUV [project] = UKV
         │           └── Finanzbericht [input] = [object Object]
-        └── ekQuoteFaktor [decision] = 0.1 -> 0 (changed) :: band-2
+        └── ekQuoteFaktor [match] = 0.1 -> 0 (changed) :: band-2
             └── Eigenkapitalquote [ratio] = 0.8 -> 0.038461538461538464 (changed)
                 ├── Eigenkapital [input] = 100
                 └── Bilanzsumme [sum] = 125 -> 2600 (changed)

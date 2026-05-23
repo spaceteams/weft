@@ -4,7 +4,7 @@ import type { RuleMeta } from "../rule/rule-meta";
 import { type CanonicalJson, canonicalize } from "../snapshot/canonicalize";
 import type { ValidationSeverity } from "../validate/validation-result";
 import type { CompiledModel } from ".";
-import type { ModelStructure } from "./model-structure";
+import type { KeyValueType, ModelStructure } from "./model-structure";
 
 // ---------------------------------------------------------------------------
 // FrozenModel — JSON-serializable representation of the model structure
@@ -43,6 +43,7 @@ export type FrozenModel = {
     readonly severity?: ValidationSeverity;
     readonly jsonSchema?: Record<string, CanonicalJson>;
   }>;
+  readonly keyValueTypes?: Readonly<Record<KeyId, KeyValueType>>;
 };
 
 /**
@@ -94,6 +95,46 @@ export function freezeModel(model: CompiledModel): FrozenModel {
     }
   }
 
+  // Fallback: use explicit JSON Schemas for keys not covered by ~standard.jsonSchema
+  for (const [keyId, schema] of model.explicitJsonSchemas) {
+    if (jsonSchemas && keyId in jsonSchemas) continue; // ~standard.jsonSchema took precedence
+    if (!jsonSchemas) {
+      jsonSchemas = {};
+    }
+    const canonicalSchema: Record<string, CanonicalJson> = {};
+    for (const [k, v] of Object.entries(schema)) {
+      canonicalSchema[k] = canonicalize(v);
+    }
+    jsonSchemas[keyId] = { schema: canonicalSchema };
+  }
+
+  // Derive key value types from JSON Schema type field
+  let keyValueTypes: Record<KeyId, KeyValueType> | undefined;
+  if (jsonSchemas) {
+    keyValueTypes = {};
+    const allKeys = [...model.inputKeys, ...model.orderedRuleTargets];
+    for (const keyId of allKeys) {
+      const entry = jsonSchemas[keyId];
+      if (entry) {
+        const schemaType = entry.schema.type;
+        if (
+          schemaType === "number" ||
+          schemaType === "integer" ||
+          schemaType === "string" ||
+          schemaType === "boolean" ||
+          schemaType === "object" ||
+          schemaType === "array"
+        ) {
+          keyValueTypes[keyId] = schemaType;
+        } else {
+          keyValueTypes[keyId] = "unknown";
+        }
+      } else {
+        keyValueTypes[keyId] = "unknown";
+      }
+    }
+  }
+
   // Freeze constraints
   let constraints:
     | Array<{
@@ -137,6 +178,9 @@ export function freezeModel(model: CompiledModel): FrozenModel {
   if (constraints) {
     (result as { constraints?: typeof constraints }).constraints = constraints;
   }
+  if (keyValueTypes) {
+    (result as { keyValueTypes?: typeof keyValueTypes }).keyValueTypes = keyValueTypes;
+  }
 
   return result;
 }
@@ -164,6 +208,11 @@ export function hydrateModel(frozen: FrozenModel): ModelStructure {
   }
   if (frozen.constraints) {
     (result as { constraints?: ModelStructure["constraints"] }).constraints = frozen.constraints;
+  }
+  if (frozen.keyValueTypes) {
+    (result as { keyValueTypes?: ModelStructure["keyValueTypes"] }).keyValueTypes = new Map(
+      Object.entries(frozen.keyValueTypes) as [KeyId, KeyValueType][],
+    );
   }
 
   return result;

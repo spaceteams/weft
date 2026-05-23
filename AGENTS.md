@@ -98,7 +98,7 @@ Snapshot   → canonicalize, fingerprint
 ### Core Types
 
 | Type | Purpose |
-|------|---------|
+|------|---------||
 | `Key<T>` | Typed identifier for a value in the model |
 | `KeyId` | String alias (`Key<T>.id`) |
 | `FactBag` | `Record<KeyId, unknown>` — input values |
@@ -108,6 +108,9 @@ Snapshot   → canonicalize, fingerprint
 | `Model` | Uncompiled model (inputs + rules + semantics + metadata) |
 | `CompiledModel` | Validated model with dependency graph, topological order, `ruleSpecs` |
 | `ModelStructure` | Structural subset of `CompiledModel` (no live rule fns); satisfied by both `CompiledModel` and hydrated frozen models |
+| `KeyMeta` | Per-key metadata: `label`, `description`, `group`, `unit`, `order`, `semanticType` |
+| `SemanticType` | Presentation hint: `"percent"` \| `"currency"` \| `"date"` \| `"duration"` \| `"email"` \| `"url"` |
+| `KeyValueType` | Simple type tag: `"number"` \| `"integer"` \| `"string"` \| `"boolean"` \| `"object"` \| `"array"` \| `"unknown"` |
 
 ### Evaluation & Overlay
 
@@ -161,7 +164,7 @@ Canonicalization sorts object keys and normalizes values for deterministic finge
 
 | Type | Contents |
 |------|----------|
-| `FrozenModel` | `inputKeys`, `orderedRuleTargets`, `depsByTarget`, `dependentsByKey`, `keyMeta`, `ruleMeta`, `ruleSpecs` (all as Records, canonicalized) |
+| `FrozenModel` | `inputKeys`, `orderedRuleTargets`, `depsByTarget`, `dependentsByKey`, `keyMeta`, `ruleMeta`, `ruleSpecs`, `jsonSchemas?`, `keyValueTypes?`, `constraints?` (all as Records, canonicalized) |
 | `FrozenEvaluatedDraft` | `version`, `draftId`, `snapshot`, `base`, `overlay`, `effective`, `values`, `deltas`, `trace`, `frozenAt` |
 | `FrozenSnapshot` | Fingerprints: `modelFingerprint`, `baseFingerprint`, `overlayFingerprint`, `analysisFingerprint`, `createdAt` |
 | `ClientDraftAnalysis` | `impact`, `groupedDiffs`, `changes`, `values` — derived client-side from frozen artifacts |
@@ -243,6 +246,18 @@ Replace `CompiledModel` parameter with `ModelStructure` import from `../model/mo
 4. Add to `FrozenModel` type, `freezeModel`, and `hydrateModel` in `model/freeze-model.ts`
 5. Canonicalize if the field contains arbitrary data
 
+### Adding JSON Schema metadata for a key
+Two paths, tried in order during `freezeModel`:
+1. **Auto-extraction**: If the schema library exposes `~standard.jsonSchema` (e.g. Zod 3.24+), it's extracted automatically.
+2. **Explicit fallback**: Provide `jsonSchema: { type: "number", ... }` in `InputOptions` or `RuleOptions`. Stored in `model.explicitJsonSchemas` and used when auto-extraction fails.
+
+The explicit path also supports metadata-only use (no validation schema required):
+```ts
+m.input(category, {
+  jsonSchema: { type: "string", enum: ["A", "B", "C"] },
+});
+```
+
 ## Important Design Decisions
 
 1. **`ModelStructure` is structurally typed** — `CompiledModel` satisfies it implicitly. Any new field added to `ModelStructure` should be optional (to maintain this), while the same field on `CompiledModel` can be required.
@@ -256,3 +271,9 @@ Replace `CompiledModel` parameter with `ModelStructure` import from `../model/mo
 5. **`normalizeDraft` is server-only** — It requires `CompiledModel` (needs semantics for equality checks). Client-side analysis skips normalization (the server normalizes before freezing).
 
 6. **Fingerprinting uses SHA-256** — `fingerprintValue` canonicalizes then hashes with `node:crypto`. This makes it server/Node.js-only; clients use pre-computed fingerprints from `FrozenSnapshot`.
+
+7. **Explicit JSON Schema as fallback** — The `~standard.jsonSchema` auto-extraction only works with schema libraries that implement the StandardJSONSchemaV1 extension (e.g. Zod 3.24+). Valibot 1.4.0 does NOT support it. The `jsonSchema` option on `InputOptions`/`RuleOptions` provides a universal fallback for JSON Schema metadata regardless of schema library.
+
+8. **`keyValueTypes` is derived, not declared** — Rather than requiring model authors to redundantly declare value types alongside schemas, `freezeModel` automatically derives `keyValueTypes` from the JSON Schema `type` field. Keys without schemas get `"unknown"`.
+
+9. **`semanticType` is for presentation ambiguity** — When JSON Schema alone can't distinguish intent (e.g. `{type: "number", min: 0, max: 1}` could be a percentage or a raw decimal), `KeyMeta.semanticType` provides an explicit hint for UI consumers.

@@ -33,13 +33,35 @@ export * from "./value";
 // ── Rules: computation specifications ───────────────────────────────────────
 
 export * from "./rule";
-export * from "./rule/decision";
+export * from "./rule/abs";
+export * from "./rule/algebraic-rules";
+export * from "./rule/clamp";
+export * from "./rule/coerce";
+export * from "./rule/compare";
+export * from "./rule/compose";
+export * from "./rule/concat";
+export * from "./rule/conditional";
+export * from "./rule/decision-dsl";
+export * from "./rule/difference";
+export * from "./rule/financial";
+export * from "./rule/format";
+export * from "./rule/logical";
+export * from "./rule/map-entries";
+export * from "./rule/min-max";
+export * from "./rule/negate";
+export * from "./rule/numeric-rules";
 export * from "./rule/operand";
+export * from "./rule/pick";
+export * from "./rule/pluck";
+export * from "./rule/product";
 export * from "./rule/projection";
 export * from "./rule/ratio";
+export * from "./rule/round";
 export * from "./rule/rule-meta";
 export * from "./rule/scale";
+export * from "./rule/spread";
 export * from "./rule/sum";
+export * from "./rule/template";
 export * from "./rule/weighted-sum";
 
 // ── Model: assembly, compilation, and graph analysis ────────────────────────

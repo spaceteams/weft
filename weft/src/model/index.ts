@@ -14,6 +14,8 @@ export type Model = {
   readonly ruleMeta: ReadonlyMap<KeyId, RuleMeta>;
   readonly schemas: ReadonlyMap<KeyId, KeySchema<unknown>>;
   readonly constraints: readonly Constraint[];
+  /** Explicit JSON Schemas provided by users for keys that don't have auto-extractable schemas. */
+  readonly explicitJsonSchemas: ReadonlyMap<KeyId, Record<string, unknown>>;
 };
 
 export type CompiledModel = Model & {
