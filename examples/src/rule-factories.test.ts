@@ -52,7 +52,10 @@ describe("arithmetic rule factories", () => {
 
   it("inspects model target", () => {
     expect(
-      inspectionNodeToAscii(inspectModelTarget(model, absProfit.id), { showMeta: true }),
+      inspectionNodeToAscii(inspectModelTarget(model, absProfit.id), {
+        showMeta: true,
+        showChange: true,
+      }),
     ).toMatchInlineSnapshot(`
       "└── Abs Profit [abs]
           └── Profit [difference]
@@ -123,6 +126,63 @@ describe("clamp, round, conditional", () => {
     const result = evaluate(model, { score: 50, isHigh: false });
     expect(result.values.get("bonus")).toBe(100);
   });
+
+  it("inspects trace with detail annotations", () => {
+    const result = evaluate(model, { score: 105.67, isHigh: true });
+    expect(
+      inspectionNodeToAscii(inspectTraceTarget(model, result.trace, clamped.id), {
+        showMeta: true,
+        showChange: false,
+      }),
+    ).toMatchInlineSnapshot(`
+      "└── Clamped [clamp] = 100 :: clamped
+          └── Score [input] = 105.67"
+    `);
+    expect(
+      inspectionNodeToAscii(inspectTraceTarget(model, result.trace, rounded.id), {
+        showMeta: true,
+        showChange: false,
+      }),
+    ).toMatchInlineSnapshot(`
+      "└── Rounded [round] = 105.7 :: round(1)
+          └── Score [input] = 105.67"
+    `);
+    expect(
+      inspectionNodeToAscii(inspectTraceTarget(model, result.trace, bonus.id), {
+        showMeta: true,
+        showChange: false,
+      }),
+    ).toMatchInlineSnapshot(`
+      "└── Bonus [conditional] = 500 :: then
+          └── Is High [input] = true"
+    `);
+  });
+
+  it("inspects conditional otherwise branch", () => {
+    const result = evaluate(model, { score: 50, isHigh: false });
+    expect(
+      inspectionNodeToAscii(inspectTraceTarget(model, result.trace, bonus.id), {
+        showMeta: true,
+        showChange: false,
+      }),
+    ).toMatchInlineSnapshot(`
+      "└── Bonus [conditional] = 100 :: otherwise
+          └── Is High [input] = false"
+    `);
+  });
+
+  it("no annotation when value is not clamped", () => {
+    const result = evaluate(model, { score: 50, isHigh: false });
+    expect(
+      inspectionNodeToAscii(inspectTraceTarget(model, result.trace, clamped.id), {
+        showMeta: true,
+        showChange: false,
+      }),
+    ).toMatchInlineSnapshot(`
+      "└── Clamped [clamp] = 50
+          └── Score [input] = 50"
+    `);
+  });
 });
 
 describe("financial rules", () => {
@@ -161,14 +221,17 @@ describe("financial rules", () => {
   });
 
   it("inspects trace", () => {
-    const result = evaluate(model, { rate: 0.05, nper: 10, pmt: 0, pv: 1000 });
+    // Use inputs that produce an exact binary float (1000 * 1.25² = 1562.5)
+    // to avoid platform-dependent trailing-digit differences.
+    const result = evaluate(model, { rate: 0.25, nper: 2, pmt: 0, pv: 1000 });
     const ascii = inspectionNodeToAscii(inspectTraceTarget(model, result.trace, fv.id), {
       showMeta: true,
+      showChange: true,
     });
     expect(ascii).toMatchInlineSnapshot(`
-      "└── Future Value [future-value] = 1628.8946267774422
-          ├── Rate [input] = 0.05
-          ├── Periods [input] = 10
+      "└── Future Value [future-value] = 1562.5
+          ├── Rate [input] = 0.25
+          ├── Periods [input] = 2
           ├── Payment [input] = 0
           └── Present Value [input] = 1000"
     `);

@@ -54,28 +54,29 @@ export function algebraicRules<T>(
     sum: (target: Key<T>, deps: readonly Key<T>[]): Rule<T> => sum(ops, target, deps),
 
     /** Subtraction: minuend − subtrahend. */
-    difference: (target: Key<T>, minuend: Key<T>, subtrahend: Key<T>): Rule<T> =>
+    difference: (target: Key<T>, minuend: Operand<T>, subtrahend: Operand<T>): Rule<T> =>
       difference(ops, target, minuend, subtrahend),
 
     /** Multiplication of N factors. */
-    product: (target: Key<T>, factors: readonly Key<T>[]): Rule<T> => product(ops, target, factors),
+    product: (target: Key<T>, factors: readonly Operand<T>[]): Rule<T> =>
+      product(ops, target, factors),
 
     /** Unary negation: −source. */
     negate: (target: Key<T>, source: Key<T>): Rule<T> => negate(ops, target, source),
 
     /** Division: numerator / denominator. */
-    ratio: (target: Key<T>, numerator: Key<T>, denominator: Key<T>): Rule<T> =>
+    ratio: (target: Key<T>, numerator: Key<T>, denominator: Operand<T>): Rule<T> =>
       ratio(ops, target, numerator, denominator),
 
     /** Multiply value by factor. */
-    scale: (target: Key<T>, input: Key<T>, factor: Key<T>): Rule<T> =>
+    scale: (target: Key<T>, input: Key<T>, factor: Operand<T>): Rule<T> =>
       scale(ops, target, input, factor),
 
-    /** Minimum of N keys. */
-    minimum: (target: Key<T>, deps: readonly Key<T>[]): Rule<T> => minimum(ops, target, deps),
+    /** Minimum of N operands (keys or constants). */
+    minimum: (target: Key<T>, deps: readonly Operand<T>[]): Rule<T> => minimum(ops, target, deps),
 
-    /** Maximum of N keys. */
-    maximum: (target: Key<T>, deps: readonly Key<T>[]): Rule<T> => maximum(ops, target, deps),
+    /** Maximum of N operands (keys or constants). */
+    maximum: (target: Key<T>, deps: readonly Operand<T>[]): Rule<T> => maximum(ops, target, deps),
 
     /** Absolute value. */
     abs: (target: Key<T>, source: Key<T>): Rule<T> => abs(ops, target, source),
@@ -89,15 +90,25 @@ export function algebraicRules<T>(
       weightedSum(ops, target, deps),
 
     /** Financial future value: FV = PV × (1+r)^n + PMT × ((1+r)^n − 1) / r */
-    futureValue: (target: Key<T>, rate: Key<T>, nper: Key<T>, pmt: Key<T>, pv: Key<T>): Rule<T> =>
-      futureValue(ops, target, rate, nper, pmt, pv),
+    futureValue: (
+      target: Key<T>,
+      rate: Operand<T>,
+      nper: Operand<T>,
+      pmt: Operand<T>,
+      pv: Operand<T>,
+    ): Rule<T> => futureValue(ops, target, rate, nper, pmt, pv),
 
     /** Financial present value: PV = FV / (1+r)^n − PMT × ((1+r)^n − 1) / (r × (1+r)^n) */
-    presentValue: (target: Key<T>, rate: Key<T>, nper: Key<T>, pmt: Key<T>, fv: Key<T>): Rule<T> =>
-      presentValue(ops, target, rate, nper, pmt, fv),
+    presentValue: (
+      target: Key<T>,
+      rate: Operand<T>,
+      nper: Operand<T>,
+      pmt: Operand<T>,
+      fv: Operand<T>,
+    ): Rule<T> => presentValue(ops, target, rate, nper, pmt, fv),
 
     /** Financial annuity payment: PMT = PV × r × (1+r)^n / ((1+r)^n − 1) */
-    annuityPayment: (target: Key<T>, rate: Key<T>, nper: Key<T>, pv: Key<T>): Rule<T> =>
+    annuityPayment: (target: Key<T>, rate: Operand<T>, nper: Operand<T>, pv: Operand<T>): Rule<T> =>
       annuityPayment(ops, target, rate, nper, pv),
   };
 }

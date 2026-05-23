@@ -4,13 +4,7 @@
  * Consumers (e.g. UI frameworks) can use this to select appropriate
  * input widgets or formatters without guessing from schema constraints.
  */
-export type SemanticType =
-  | "percent"
-  | "currency"
-  | "date"
-  | "duration"
-  | "email"
-  | "url";
+export type SemanticType = "percent" | "currency" | "date" | "duration" | "email" | "url";
 
 export type KeyMeta = {
   readonly label?: string;

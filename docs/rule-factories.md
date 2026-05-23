@@ -359,6 +359,344 @@ Decision table with predicate-based row matching. See existing documentation for
 
 ---
 
+### `match(target, config)` — Typed Predicate Decision Table
+
+Decision table using the typed predicate DSL with `when()`. Supports mixed-type conditions naturally.
+
+```ts
+import { match, when, key, value } from "@spaceteams/weft";
+
+const age = key<number>("age");
+const status = key<string>("status");
+const discount = key<number>("discount");
+
+match(discount, {
+  name: "discount-table",
+  rows: [
+    { id: "senior", when: [when(age).gte(65), when(status).eq("active")], output: value(0.2) },
+    { id: "student", when: [when(age).lt(25)], output: value(0.15) },
+  ],
+  default: value(0),
+});
+```
+
+The `when()` builder supports: `eq`, `neq`, `in`, `gt`, `gte`, `lt`, `lte`, `between`.
+
+**Spec op:** `"match"`
+
+---
+
+### `switchOn(source, target, config)` — Single-Source Switch
+
+Maps one input key to an output via equality matching. Shorthand for common single-column decision tables.
+
+```ts
+import { switchOn, key, value } from "@spaceteams/weft";
+
+const category = key<string>("category");
+const price = key<number>("price");
+
+switchOn(category, price, {
+  name: "pricing",
+  cases: { standard: value(100), premium: value(250) },
+  default: value(50),
+});
+```
+
+Also supports array form for multi-value matching:
+```ts
+switchOn(category, price, {
+  name: "pricing",
+  cases: [
+    { match: ["standard", "basic"], output: value(100) },
+    { match: "premium", output: value(250) },
+  ],
+  default: value(50),
+});
+```
+
+**Spec op:** `"match"` (delegates to `match()` internally)
+
+---
+
+### `rangeSwitch(source, target, config)` — Numeric Range Lookup
+
+Maps a numeric source to an output based on ascending thresholds. Each range fires if `source < below`.
+
+```ts
+import { rangeSwitch, key, value } from "@spaceteams/weft";
+
+const income = key<number>("income");
+const bracket = key<string>("bracket");
+
+rangeSwitch(income, bracket, {
+  name: "tax-brackets",
+  ranges: [
+    { below: 10_000, output: value("exempt") },
+    { below: 50_000, output: value("standard") },
+  ],
+  default: value("maximum"),
+});
+```
+
+**Spec op:** `"match"` (delegates to `match()` internally)
+
+---
+
+## Object & Record Helpers
+
+These rules work with structured/nested data — no algebra traits needed.
+
+### `projection(target, source, field)`
+
+Extract a single field from a record-typed key.
+
+```ts
+import { projection, key } from "@spaceteams/weft";
+
+const user = key<{ name: string; age: number }>("user");
+const name = key<string>("name");
+
+projection(name, user, "name");
+```
+
+**Spec op:** `"project"`
+
+---
+
+### `pick(target, source, fields)`
+
+Extract multiple fields from a record-typed key.
+
+```ts
+import { pick, key } from "@spaceteams/weft";
+
+const customer = key<{ name: string; age: number; email: string }>("customer");
+const profile = key<{ name: string; email: string }>("profile");
+
+pick(profile, customer, ["name", "email"]);
+```
+
+**Spec op:** `"pick"`
+
+---
+
+### `pluck(target, source, path)`
+
+Deep path extraction from nested objects. Accepts dot-notation string or array of segments.
+
+```ts
+import { pluck, key } from "@spaceteams/weft";
+
+const config = key<{ pricing: { baseRate: number } }>("config");
+const rate = key<number>("rate");
+
+pluck(rate, config, "pricing.baseRate");
+// or: pluck(rate, config, ["pricing", "baseRate"]);
+```
+
+**Spec op:** `"pluck"`
+
+---
+
+### `compose(target, fields)`
+
+Construct an object from individual keys (fan-in pattern).
+
+```ts
+import { compose, key } from "@spaceteams/weft";
+
+const name = key<string>("name");
+const age = key<number>("age");
+const profile = key<{ name: string; age: number }>("profile");
+
+compose(profile, { name, age });
+```
+
+**Spec op:** `"compose"`
+
+---
+
+### `spread(target, sources)`
+
+Shallow-merge multiple object keys into one. Later sources override earlier ones.
+
+```ts
+import { spread, key } from "@spaceteams/weft";
+
+const base = key<{ a: number }>("base");
+const extra = key<{ b: string }>("extra");
+const merged = key<{ a: number; b: string }>("merged");
+
+spread(merged, [base, extra]);
+```
+
+**Spec op:** `"spread"`
+
+---
+
+### `mapEntries(target, source, transform, extraDeps?)`
+
+Transform all values in a record-typed key. The transform function receives a `get` resolver for accessing extra dependencies.
+
+```ts
+import { mapEntries, key } from "@spaceteams/weft";
+
+const prices = key<Record<string, number>>("prices");
+const discounted = key<Record<string, number>>("discounted");
+const factor = key<number>("factor");
+
+mapEntries(discounted, prices, (v, get) => v * get(factor), [factor]);
+```
+
+**Spec op:** `"mapEntries"`
+
+---
+
+## String Rules
+
+### `concat(target, parts, separator?)`
+
+Concatenate multiple string keys with an optional separator.
+
+```ts
+import { concat, key } from "@spaceteams/weft";
+
+const first = key<string>("first");
+const last = key<string>("last");
+const full = key<string>("full");
+
+concat(full, [first, last], " ");
+```
+
+**Spec op:** `"concat"`
+
+---
+
+### `template(target, pattern, deps)`
+
+String interpolation with `{key}` placeholders. Values are coerced via `String()`.
+
+```ts
+import { template, key } from "@spaceteams/weft";
+
+const name = key<string>("name");
+const count = key<number>("count");
+const msg = key<string>("msg");
+
+template(msg, "{name} has {count} items", { name, count });
+```
+
+**Spec op:** `"template"`
+
+---
+
+### `format(target, source, formatter)`
+
+Convert any typed value to a display string using a custom formatter function.
+
+```ts
+import { format, key } from "@spaceteams/weft";
+
+const amount = key<number>("amount");
+const display = key<string>("display");
+
+format(display, amount, (v) => `€${v.toFixed(2)}`);
+```
+
+**Spec op:** `"format"` (formatter not serializable, but spec is inspectable)
+
+---
+
+## Boolean Rules
+
+### `logicalAnd(target, deps)` / `logicalOr(target, deps)` / `logicalNot(target, source)`
+
+Boolean logic operations.
+
+```ts
+import { logicalAnd, logicalOr, logicalNot, key } from "@spaceteams/weft";
+
+const a = key<boolean>("a");
+const b = key<boolean>("b");
+const both = key<boolean>("both");
+const either = key<boolean>("either");
+const notA = key<boolean>("notA");
+
+logicalAnd(both, [a, b]);    // both = a && b
+logicalOr(either, [a, b]);   // either = a || b
+logicalNot(notA, a);          // notA = !a
+```
+
+**Spec ops:** `"and"`, `"or"`, `"not"`
+
+---
+
+### `compare(target, left, right, op)`
+
+Produce a boolean from a comparison. The right operand can be a literal value or key reference.
+
+```ts
+import { compare, key, value } from "@spaceteams/weft";
+
+const age = key<number>("age");
+const isAdult = key<boolean>("isAdult");
+
+compare(isAdult, age, value(18), "gte");
+```
+
+Supported operators: `"eq"`, `"neq"`, `"gt"`, `"gte"`, `"lt"`, `"lte"`
+
+**Spec op:** `"compare"`
+
+---
+
+### `coerce(target, source, fn)`
+
+Generic type conversion rule.
+
+```ts
+import { coerce, key } from "@spaceteams/weft";
+
+const raw = key<string>("raw");
+const parsed = key<number>("parsed");
+
+coerce(parsed, raw, (s) => parseFloat(s));
+```
+
+**Spec op:** `"coerce"` (function not serializable, but spec is inspectable)
+
+---
+
+## Ergonomic Helpers
+
+### `numericRules` / `algebraicRules(ops)`
+
+Pre-bound rule factory sets that eliminate the `ops` parameter:
+
+```ts
+import { numericRules as n, key } from "@spaceteams/weft";
+
+const a = key<number>("a");
+const b = key<number>("b");
+const total = key<number>("total");
+
+n.sum(total, [a, b]);        // no ops needed!
+n.difference(total, a, b);
+n.product(total, [a, b]);
+n.scale(total, a, b);
+n.ratio(total, a, b);
+n.minimum(total, [a, b]);
+n.maximum(total, [a, b]);
+n.abs(total, a);
+n.clamp(total, a, value(0), value(100));
+n.weightedSum(total, [{ key: a, weight: value(2) }]);
+```
+
+`numericRules` uses `defaultNumberOps`. For custom types, use `algebraicRules(myOps)`.
+
+---
+
 ## Inspection & Trace
 
 Every rule factory produces a `spec` with an `op` field that appears in inspection trees:

@@ -4,6 +4,19 @@ import type { RuleMeta } from "../rule/rule-meta";
 import type { ValidationSeverity } from "../validate/validation-result";
 
 /**
+ * Simple value type discriminator for a key.
+ * Derived from the JSON Schema `type` field during model freeze.
+ */
+export type KeyValueType =
+  | "number"
+  | "integer"
+  | "string"
+  | "boolean"
+  | "object"
+  | "array"
+  | "unknown";
+
+/**
  * The structural subset of a compiled model that enables graph traversal,
  * impact analysis, and inspection without the live rule functions.
  *
@@ -45,4 +58,11 @@ export type ModelStructure = {
     readonly severity?: ValidationSeverity;
     readonly jsonSchema?: Record<string, unknown>;
   }>;
+  /**
+   * Optional map from key ID to the inferred value type tag.
+   * Derived from JSON Schema `type` during freeze, provides a simple
+   * discriminator for consumers that need to switch on value types
+   * without parsing full JSON schemas.
+   */
+  readonly keyValueTypes?: ReadonlyMap<KeyId, KeyValueType>;
 };

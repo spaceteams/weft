@@ -187,6 +187,7 @@ export function compileModel(model: Model): CompileResult {
       ruleMeta: model.ruleMeta,
       schemas: model.schemas,
       constraints: model.constraints,
+      explicitJsonSchemas: model.explicitJsonSchemas,
       inputKeys: [...inputKeys],
       orderedRuleTargets,
       ruleByTarget,

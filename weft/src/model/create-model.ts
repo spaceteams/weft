@@ -14,6 +14,12 @@ export type InputOptions<T> = {
   semantics?: Partial<KeySemantics<T>>;
   schema?: StandardSchemaV1<unknown, T>;
   schemaSeverity?: ValidationSeverity;
+  /**
+   * Explicit JSON Schema for this key. Used during model freezing when the
+   * schema library doesn't support `~standard.jsonSchema`.
+   * Can be provided without a `schema` for metadata-only use.
+   */
+  jsonSchema?: Record<string, unknown>;
 };
 
 export type RuleOptions<T> = {
@@ -21,6 +27,12 @@ export type RuleOptions<T> = {
   semantics?: Partial<KeySemantics<T>>;
   schema?: StandardSchemaV1<unknown, T>;
   schemaSeverity?: ValidationSeverity;
+  /**
+   * Explicit JSON Schema for this key. Used during model freezing when the
+   * schema library doesn't support `~standard.jsonSchema`.
+   * Can be provided without a `schema` for metadata-only use.
+   */
+  jsonSchema?: Record<string, unknown>;
 };
 
 export function createModel() {
@@ -30,6 +42,7 @@ export function createModel() {
   const ruleMeta: Map<KeyId, RuleMeta> = new Map();
   const semanticsMap: Map<KeyId, Partial<KeySemantics<unknown>>> = new Map();
   const schemas: Map<KeyId, KeySchema<unknown>> = new Map();
+  const explicitJsonSchemas: Map<KeyId, Record<string, unknown>> = new Map();
   const constraints: Constraint[] = [];
   return {
     input<T>(
@@ -49,7 +62,11 @@ export function createModel() {
           key: k,
           schema: opts.schema,
           severity: opts.schemaSeverity,
+          jsonSchema: opts.jsonSchema,
         } as KeySchema<unknown>);
+      }
+      if (opts.jsonSchema) {
+        explicitJsonSchemas.set(k.id, opts.jsonSchema);
       }
 
       return k;
@@ -71,7 +88,11 @@ export function createModel() {
           key: r.target,
           schema: opts.schema,
           severity: opts.schemaSeverity ?? "warning",
+          jsonSchema: opts.jsonSchema,
         } as KeySchema<unknown>);
+      }
+      if (opts.jsonSchema) {
+        explicitJsonSchemas.set(r.target.id, opts.jsonSchema);
       }
 
       return r.target;
@@ -80,19 +101,28 @@ export function createModel() {
       constraints.push(def);
     },
     build(): Model {
-      return { inputs, rules, semantics: semanticsMap, keyMeta, ruleMeta, schemas, constraints };
+      return {
+        inputs,
+        rules,
+        semantics: semanticsMap,
+        keyMeta,
+        ruleMeta,
+        schemas,
+        constraints,
+        explicitJsonSchemas,
+      };
     },
   };
 }
 
 function isInputOptions<T>(value: unknown): value is InputOptions<T> {
   if (value == null || typeof value !== "object") return false;
-  return "schema" in value || "meta" in value || "semantics" in value;
+  return "schema" in value || "meta" in value || "semantics" in value || "jsonSchema" in value;
 }
 
 function isRuleOptions<T>(value: unknown): value is RuleOptions<T> {
   if (value == null || typeof value !== "object") return false;
-  return "schema" in value || "meta" in value || "semantics" in value;
+  return "schema" in value || "meta" in value || "semantics" in value || "jsonSchema" in value;
 }
 
 function resolveInputArgs<T>(
@@ -103,6 +133,7 @@ function resolveInputArgs<T>(
   semantics?: Partial<KeySemantics<T>>;
   schema?: StandardSchemaV1<unknown, T>;
   schemaSeverity?: ValidationSeverity;
+  jsonSchema?: Record<string, unknown>;
 } {
   if (isInputOptions<T>(metaOrOpts)) {
     return {
@@ -110,6 +141,7 @@ function resolveInputArgs<T>(
       semantics: metaOrOpts.semantics,
       schema: metaOrOpts.schema,
       schemaSeverity: metaOrOpts.schemaSeverity,
+      jsonSchema: metaOrOpts.jsonSchema,
     };
   }
   return { meta: metaOrOpts ?? {}, semantics };
@@ -123,6 +155,7 @@ function resolveRuleArgs<T>(
   semantics?: Partial<KeySemantics<T>>;
   schema?: StandardSchemaV1<unknown, T>;
   schemaSeverity?: ValidationSeverity;
+  jsonSchema?: Record<string, unknown>;
 } {
   if (isRuleOptions<T>(metaOrOpts)) {
     return {
@@ -130,6 +163,7 @@ function resolveRuleArgs<T>(
       semantics: metaOrOpts.semantics,
       schema: metaOrOpts.schema,
       schemaSeverity: metaOrOpts.schemaSeverity,
+      jsonSchema: metaOrOpts.jsonSchema,
     };
   }
   return { meta: metaOrOpts ?? {}, semantics };

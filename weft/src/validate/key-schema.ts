@@ -11,6 +11,13 @@ export type KeySchema<T> = {
   readonly schema: StandardSchemaV1<unknown, T>;
   /** Default severity for issues produced by this schema. Defaults to "error". */
   readonly severity?: ValidationSeverity;
+  /**
+   * Explicit JSON Schema for this key. Used during model freezing as a fallback
+   * when the schema library does not support the `~standard.jsonSchema` extension.
+   *
+   * If the schema library does expose `~standard.jsonSchema`, it takes precedence.
+   */
+  readonly jsonSchema?: Record<string, unknown>;
 };
 
 /**
