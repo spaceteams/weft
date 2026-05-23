@@ -1,5 +1,16 @@
 # @spaceteams/weft
 
+## 0.4.0
+
+### Minor Changes
+
+- 47fac84: many new rules and decision dsl
+- 47fac84: validation capabilities
+
+### Patch Changes
+
+- 47fac84: add analyze frozen draft helper
+
 ## 0.3.0
 
 ### Minor Changes

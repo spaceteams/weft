@@ -1,5 +1,19 @@
 # @spaceteams/weft-examples
 
+## 0.4.0
+
+### Minor Changes
+
+- 47fac84: many new rules and decision dsl
+- 47fac84: validation capabilities
+
+### Patch Changes
+
+- Updated dependencies [47fac84]
+- Updated dependencies [47fac84]
+- Updated dependencies [47fac84]
+  - @spaceteams/weft@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
