@@ -49,7 +49,6 @@ export function inspectDiffTarget(
       kind: (step?.ruleSpec?.op as string) ?? "rule",
       meta: {
         key: step?.keyMeta,
-        rule: step?.ruleMeta,
       },
       structure: {
         ruleSpec: step?.ruleSpec,

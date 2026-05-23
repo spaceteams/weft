@@ -72,13 +72,13 @@ export function evaluate(
     values.set(target, output);
 
     const deps = model.depsByTarget.get(target) ?? [];
-    const ruleMeta = model.ruleMeta.get(target);
+
     const keyMeta = model.keyMeta.get(target);
     trace.push({
       target,
       deps,
       ruleSpec: rule.spec,
-      ruleMeta: ruleMeta,
+
       keyMeta: keyMeta,
       detail: detail ?? {},
       inputs,

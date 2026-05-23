@@ -14,7 +14,6 @@ function minimalFrozenModel(overrides?: Partial<FrozenModel>): FrozenModel {
     depsByTarget: {},
     dependentsByKey: {},
     keyMeta: {},
-    ruleMeta: {},
     ruleSpecs: {},
     ...overrides,
   };

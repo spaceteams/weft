@@ -37,7 +37,7 @@ const formatDetailAnnotation = (
 };
 
 const formatLabel = (node: InspectionNode, { showMeta, showChange }: RenderOptions): string => {
-  let label = node.meta?.rule?.label ?? node.label;
+  let label = node.label;
 
   if (showMeta) {
     label += ` [${node.kind}]`;

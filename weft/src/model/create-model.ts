@@ -3,7 +3,6 @@ import { type Input, input } from "../input";
 import type { Key, KeyId, KeySemantics } from "../key";
 import type { KeyMeta } from "../key-meta";
 import type { Rule } from "../rule";
-import type { RuleMeta } from "../rule/rule-meta";
 import type { Constraint } from "../validate/constraint";
 import type { KeySchema } from "../validate/key-schema";
 import type { ValidationSeverity } from "../validate/validation-result";
@@ -23,7 +22,7 @@ export type InputOptions<T> = {
 };
 
 export type RuleOptions<T> = {
-  meta?: RuleMeta;
+  meta?: KeyMeta;
   semantics?: Partial<KeySemantics<T>>;
   schema?: StandardSchemaV1<unknown, T>;
   schemaSeverity?: ValidationSeverity;
@@ -39,7 +38,6 @@ export function createModel() {
   const inputs: Input<unknown>[] = [];
   const rules: Rule<unknown>[] = [];
   const keyMeta: Map<KeyId, KeyMeta> = new Map();
-  const ruleMeta: Map<KeyId, RuleMeta> = new Map();
   const semanticsMap: Map<KeyId, Partial<KeySemantics<unknown>>> = new Map();
   const schemas: Map<KeyId, KeySchema<unknown>> = new Map();
   const explicitJsonSchemas: Map<KeyId, Record<string, unknown>> = new Map();
@@ -73,13 +71,13 @@ export function createModel() {
     },
     rule<T>(
       r: Rule<T>,
-      metaOrOpts?: RuleMeta | RuleOptions<T>,
+      metaOrOpts?: KeyMeta | RuleOptions<T>,
       semantics?: Partial<KeySemantics<T>>,
     ): Key<T> {
       rules.push(r);
 
       const opts = resolveRuleArgs(metaOrOpts, semantics);
-      ruleMeta.set(r.target.id, opts.meta);
+      keyMeta.set(r.target.id, opts.meta);
       if (opts.semantics) {
         semanticsMap.set(r.target.id, opts.semantics as Partial<KeySemantics<unknown>>);
       }
@@ -97,6 +95,14 @@ export function createModel() {
 
       return r.target;
     },
+    /**
+     * Attach key metadata to any key — input or rule target.
+     * Merges with existing metadata (later calls win on conflict).
+     */
+    meta<T>(k: Key<T>, meta: KeyMeta): void {
+      const existing = keyMeta.get(k.id);
+      keyMeta.set(k.id, existing ? { ...existing, ...meta } : meta);
+    },
     constraint(def: Constraint): void {
       constraints.push(def);
     },
@@ -106,7 +112,6 @@ export function createModel() {
         rules,
         semantics: semanticsMap,
         keyMeta,
-        ruleMeta,
         schemas,
         constraints,
         explicitJsonSchemas,
@@ -148,10 +153,10 @@ function resolveInputArgs<T>(
 }
 
 function resolveRuleArgs<T>(
-  metaOrOpts?: RuleMeta | RuleOptions<T>,
+  metaOrOpts?: KeyMeta | RuleOptions<T>,
   semantics?: Partial<KeySemantics<T>>,
 ): {
-  meta: RuleMeta;
+  meta: KeyMeta;
   semantics?: Partial<KeySemantics<T>>;
   schema?: StandardSchemaV1<unknown, T>;
   schemaSeverity?: ValidationSeverity;

@@ -2,7 +2,6 @@ import type { Input } from "../input";
 import type { AnyKey, KeyId, KeySemantics } from "../key";
 import type { KeyMeta } from "../key-meta";
 import type { Rule } from "../rule";
-import type { RuleMeta } from "../rule/rule-meta";
 import type { Constraint } from "../validate/constraint";
 import type { KeySchema } from "../validate/key-schema";
 
@@ -11,7 +10,6 @@ export type Model = {
   readonly rules: readonly Rule<unknown>[];
   readonly semantics: ReadonlyMap<KeyId, Partial<KeySemantics<unknown>>>;
   readonly keyMeta: ReadonlyMap<KeyId, KeyMeta>;
-  readonly ruleMeta: ReadonlyMap<KeyId, RuleMeta>;
   readonly schemas: ReadonlyMap<KeyId, KeySchema<unknown>>;
   readonly constraints: readonly Constraint[];
   /** Explicit JSON Schemas provided by users for keys that don't have auto-extractable schemas. */

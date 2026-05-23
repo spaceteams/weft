@@ -1,6 +1,5 @@
 import type { KeyId } from "../key";
 import type { KeyMeta } from "../key-meta";
-import type { RuleMeta } from "../rule/rule-meta";
 import type { ValidationSeverity } from "../validate/validation-result";
 
 /**
@@ -29,7 +28,6 @@ export type ModelStructure = {
   readonly depsByTarget: ReadonlyMap<KeyId, readonly KeyId[]>;
   readonly dependentsByKey: ReadonlyMap<KeyId, readonly KeyId[]>;
   readonly keyMeta: ReadonlyMap<KeyId, KeyMeta>;
-  readonly ruleMeta: ReadonlyMap<KeyId, RuleMeta>;
   /**
    * Optional map from rule target to its spec object.
    * Enables {@link inspectModelTarget} on hydrated frozen models.

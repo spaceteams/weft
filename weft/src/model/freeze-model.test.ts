@@ -58,7 +58,6 @@ describe("freezeModel", () => {
     expect(json.dependentsByKey.equity).toContain("total");
     expect(json.dependentsByKey.equity).toContain("equityRatio");
     expect(json.keyMeta.equity).toEqual({ label: "Eigenkapital", group: "PASSIVA" });
-    expect(json.ruleMeta.total).toEqual({ label: "Bilanzsumme" });
   });
 
   it("preserves all structural fields", () => {
@@ -77,7 +76,6 @@ describe("hydrateModel", () => {
     expect(hydrated.depsByTarget).toBeInstanceOf(Map);
     expect(hydrated.dependentsByKey).toBeInstanceOf(Map);
     expect(hydrated.keyMeta).toBeInstanceOf(Map);
-    expect(hydrated.ruleMeta).toBeInstanceOf(Map);
   });
 
   it("round-trips through JSON correctly", () => {
@@ -90,7 +88,6 @@ describe("hydrateModel", () => {
     expect(hydrated.depsByTarget.get("total")).toEqual(["equity", "liabilities"]);
     expect(hydrated.dependentsByKey.get("equity")).toContain("total");
     expect(hydrated.keyMeta.get("equity")).toEqual({ label: "Eigenkapital", group: "PASSIVA" });
-    expect(hydrated.ruleMeta.get("total")).toEqual({ label: "Bilanzsumme" });
   });
 });
 

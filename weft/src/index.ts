@@ -57,7 +57,7 @@ export * from "./rule/product";
 export * from "./rule/projection";
 export * from "./rule/ratio";
 export * from "./rule/round";
-export * from "./rule/rule-meta";
+
 export * from "./rule/scale";
 export * from "./rule/spread";
 export * from "./rule/sum";

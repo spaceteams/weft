@@ -234,3 +234,112 @@ describe("createModel with schemas and constraints", () => {
     expect(result.issues[0].message).toContain("unknown_key");
   });
 });
+
+describe("createModel key metadata for rules", () => {
+  it("rule shorthand populates keyMeta with all KeyMeta fields", () => {
+    const a = key<number>("a");
+    const result = key<number>("result");
+
+    const m = createModel();
+    m.input(a);
+    m.rule(
+      rule({
+        target: result,
+        deps: [a],
+        spec: { type: "identity" },
+        eval: (get) => ({ output: get(a) }),
+      }),
+      { label: "Result", description: "The result", unit: "\u20ac", semanticType: "currency" },
+    );
+
+    const model = m.build();
+    expect(model.keyMeta.get("result")).toEqual({
+      label: "Result",
+      description: "The result",
+      unit: "\u20ac",
+      semanticType: "currency",
+    });
+  });
+
+  it("m.meta() sets keyMeta for any key", () => {
+    const a = key<number>("a");
+    const result = key<number>("result");
+
+    const m = createModel();
+    m.input(a);
+    m.rule(
+      rule({
+        target: result,
+        deps: [a],
+        spec: { type: "identity" },
+        eval: (get) => ({ output: get(a) }),
+      }),
+    );
+    m.meta(result, { unit: "\u20ac", semanticType: "currency" });
+
+    const model = m.build();
+    expect(model.keyMeta.get("result")).toEqual({ unit: "\u20ac", semanticType: "currency" });
+  });
+
+  it("m.meta() merges with existing keyMeta from rule shorthand", () => {
+    const a = key<number>("a");
+    const result = key<number>("result");
+
+    const m = createModel();
+    m.input(a);
+    m.rule(
+      rule({
+        target: result,
+        deps: [a],
+        spec: { type: "identity" },
+        eval: (get) => ({ output: get(a) }),
+      }),
+      { label: "Result" },
+    );
+    m.meta(result, { unit: "\u20ac", semanticType: "currency" });
+
+    const model = m.build();
+    expect(model.keyMeta.get("result")).toEqual({
+      label: "Result",
+      unit: "\u20ac",
+      semanticType: "currency",
+    });
+  });
+
+  it("m.meta() merges with existing keyMeta from input", () => {
+    const a = key<number>("a");
+
+    const m = createModel();
+    m.input(a, { label: "A" });
+    m.meta(a, { unit: "kg", group: "WEIGHTS" });
+
+    const model = m.build();
+    expect(model.keyMeta.get("a")).toEqual({ label: "A", unit: "kg", group: "WEIGHTS" });
+  });
+
+  it("RuleOptions.meta accepts full KeyMeta", () => {
+    const a = key<number>("a");
+    const result = key<number>("result");
+    const schema = mockSchema<number>((value) => ({ value: value as number }));
+
+    const m = createModel();
+    m.input(a);
+    m.rule(
+      rule({
+        target: result,
+        deps: [a],
+        spec: { type: "identity" },
+        eval: (get) => ({ output: get(a) }),
+      }),
+      { meta: { label: "Result", unit: "\u20ac", semanticType: "currency" }, schema },
+    );
+
+    const model = m.build();
+    expect(model.keyMeta.get("result")).toEqual({
+      label: "Result",
+      unit: "\u20ac",
+      semanticType: "currency",
+    });
+    expect(model.schemas.get("result")).toBeDefined();
+  });
+});

@@ -1,6 +1,6 @@
 import type { KeyId } from "../key";
 import type { KeyMeta } from "../key-meta";
-import type { RuleMeta } from "../rule/rule-meta";
+
 import { type CanonicalJson, canonicalize } from "../snapshot/canonicalize";
 import type { ValidationSeverity } from "../validate/validation-result";
 import type { CompiledModel } from ".";
@@ -26,7 +26,7 @@ export type FrozenModel = {
   readonly depsByTarget: Readonly<Record<KeyId, readonly KeyId[]>>;
   readonly dependentsByKey: Readonly<Record<KeyId, readonly KeyId[]>>;
   readonly keyMeta: Readonly<Record<KeyId, KeyMeta>>;
-  readonly ruleMeta: Readonly<Record<KeyId, RuleMeta>>;
+
   readonly ruleSpecs: Readonly<Record<KeyId, Record<string, CanonicalJson>>>;
   readonly jsonSchemas?: Readonly<
     Record<
@@ -168,7 +168,7 @@ export function freezeModel(model: CompiledModel): FrozenModel {
     depsByTarget: Object.fromEntries(model.depsByTarget),
     dependentsByKey: Object.fromEntries(model.dependentsByKey),
     keyMeta: Object.fromEntries(model.keyMeta),
-    ruleMeta: Object.fromEntries(model.ruleMeta),
+
     ruleSpecs,
   };
 
@@ -197,7 +197,7 @@ export function hydrateModel(frozen: FrozenModel): ModelStructure {
     depsByTarget: new Map(Object.entries(frozen.depsByTarget)),
     dependentsByKey: new Map(Object.entries(frozen.dependentsByKey)),
     keyMeta: new Map(Object.entries(frozen.keyMeta)),
-    ruleMeta: new Map(Object.entries(frozen.ruleMeta)),
+
     ruleSpecs: new Map(Object.entries(frozen.ruleSpecs)),
   };
 
