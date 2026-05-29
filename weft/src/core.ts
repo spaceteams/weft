@@ -10,6 +10,8 @@ export * from "./facts";
 export * from "./input";
 export * from "./key";
 export * from "./key-meta";
+export * from "./layer";
+export * from "./layer-meta";
 export * from "./semantics/algebra";
 export * from "./semantics/codec";
 export * from "./semantics/formatter";

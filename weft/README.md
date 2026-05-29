@@ -180,6 +180,197 @@ Three inspection entry points:
 - `inspectTraceTarget` — runtime values from evaluation trace
 - `inspectDiffTarget` — values + change annotations
 
+## Layers (Optional Parallel Evaluation)
+
+Layers are **optional** parallel evaluation tracks that run alongside the primary computation. They let you propagate metadata — units, provenance, confidence scores, display hints — through the computation graph, powered by the same rule specs that drive value evaluation.
+
+**Layers are fully opt-in.** If you don't register any layers, weft behaves exactly as before. You can adopt layers incrementally when your use case demands them.
+
+### How It Works
+
+Each rule in weft declares a `spec.op` (e.g. `"sum"`, `"ratio"`, `"scale"`). A **layer evaluator** interprets those ops for its own domain — a dimensional analysis layer knows that `"ratio"` means "divide units", while a provenance layer knows it means "derive confidence from dependencies".
+
+```
+Rule Factories          Layer Evaluators
+─────────────           ────────────────
+Define structure:       Define interpretation:
+  - target, deps          - what "ratio" means for units
+  - spec.op               - what "sum" means for provenance
+  - eval (compute)        - defaults for unknown ops
+
+        ↘                  ↙
+         spec.op (shared contract)
+```
+
+### The `LayerEvaluator` Interface
+
+```ts
+import type { LayerEvaluator } from "@spaceteams/weft";
+
+type LayerEvaluator<T> = {
+  name: string;             // unique identifier
+  version: string;          // for frozen artifact compatibility
+  eval(op, deps, spec): T | undefined;  // propagation logic
+  default?(deps): T | undefined;        // fallback for unknown ops
+  codec?: Codec<T>;         // serialization for freeze/hydrate
+};
+```
+
+### Registering Layers & Annotating Inputs
+
+```ts
+import { createModel, key, compileModel, evaluate, ratio, defaultNumberOps } from "@spaceteams/weft";
+import { dimensionalLayer, unit } from "@spaceteams/weft-layer-dimensional";
+
+const distance = key<number>("distance");
+const time = key<number>("time");
+const speed = key<number>("speed");
+
+const m = createModel();
+m.layer(dimensionalLayer);                 // register the layer
+
+m.input(distance, { label: "Distance" });
+m.annotate(distance, "units", unit("m"));   // seed input with a unit
+
+m.input(time, { label: "Time" });
+m.annotate(time, "units", unit("s"));
+
+m.rule(ratio(defaultNumberOps, speed, distance, time), { label: "Speed" });
+// No changes to rules — layers interpret the "ratio" op automatically.
+
+const { model } = compileModel(m.build()) as { ok: true; model: any };
+const result = evaluate(model, { distance: 100, time: 2 });
+
+result.values.get("speed");                // 50
+result.layers.get("units")?.get("speed");  // { num: ["m"], denom: ["s"] }
+```
+
+### Available Layer Packages
+
+weft ships three ready-made layers as separate packages:
+
+| Package | Layer name | Description |
+|---------|-----------|-------------|
+| `@spaceteams/weft-layer-dimensional` | `"units"` | SI unit propagation — validates dimensional consistency, propagates through arithmetic |
+| `@spaceteams/weft-layer-display-hints` | `"display-hints"` | Non-propagating annotations for `unit` label and `semanticType` — a simple way to attach presentation metadata without evaluation logic |
+| `@spaceteams/weft-layer-provenance` | `"provenance"` | Source tracking with confidence scores — derived values inherit the minimum confidence of their dependencies |
+
+Install only the layers you need:
+
+```bash
+# Dimensional analysis (unit propagation)
+pnpm add @spaceteams/weft-layer-dimensional
+
+# Simple display hints (non-propagating)
+pnpm add @spaceteams/weft-layer-display-hints
+
+# Provenance tracking
+pnpm add @spaceteams/weft-layer-provenance
+```
+
+### Display Hints — The Simplest Layer
+
+If you don't need propagation but want to attach `unit` or `semanticType` metadata for UI rendering, the display-hints layer is a lightweight, non-propagating option:
+
+```ts
+import { displayHintsLayer, displayHint } from "@spaceteams/weft-layer-display-hints";
+
+const m = createModel();
+m.layer(displayHintsLayer);
+
+m.input(price, { label: "Price" });
+m.annotate(price, "display-hints", displayHint({ unit: "EUR", semanticType: "currency" }));
+
+m.input(rate, { label: "Interest Rate" });
+m.annotate(rate, "display-hints", displayHint({ semanticType: "percent" }));
+
+// Rules don't inherit display hints — annotate targets explicitly if needed.
+m.rule(sum(defaultNumberOps, total, [price, fee]), { label: "Total" });
+m.annotate(total, "display-hints", displayHint({ unit: "EUR", semanticType: "currency" }));
+```
+
+Display hints are ideal for gradual adoption: add them now for presentation, and upgrade to a propagating layer (like dimensional) later if you need computational unit tracking.
+
+### Provenance — Confidence Tracking
+
+```ts
+import { provenanceLayer, provenance } from "@spaceteams/weft-layer-provenance";
+
+const m = createModel();
+m.layer(provenanceLayer);
+
+m.input(sensorReading, { label: "Sensor" });
+m.annotate(sensorReading, "provenance", provenance("GPS", 0.95, ["field-measured"]));
+
+m.input(estimate, { label: "Estimate" });
+m.annotate(estimate, "provenance", provenance("manual", 0.6));
+
+m.rule(ratio(ops, speed, sensorReading, estimate), { label: "Speed" });
+// speed will have: { source: "derived", confidence: 0.6 }  (min of deps)
+```
+
+### Writing Your Own Layer
+
+Implement `LayerEvaluator<T>` with your propagation logic:
+
+```ts
+import type { LayerEvaluator } from "@spaceteams/weft";
+
+const confidenceBands: LayerEvaluator<"high" | "medium" | "low"> = {
+  name: "confidence-band",
+  version: "1",
+  eval(op, deps) {
+    const values = [...deps.values()];
+    if (values.includes("low")) return "low";
+    if (values.includes("medium")) return "medium";
+    return "high";
+  },
+  default: () => "medium",
+  codec: {
+    encode: (v) => v,
+    decode: (j) => j as "high" | "medium" | "low",
+  },
+};
+```
+
+### Layers and Freeze/Hydrate
+
+Layer metadata and computed values freeze alongside models and drafts:
+
+```ts
+const frozenModel = freezeModel(model);
+// frozenModel.layers → [{ name: "units", version: "1", inputs: { distance: {...} } }]
+
+const frozenDraft = freezeEvaluatedDraft(model, evaluated);
+// frozenDraft.layers → { units: { distance: {...}, speed: {...} } }
+```
+
+Clients can inspect frozen layer values (via `codec.decode`) without the evaluator — they just can't re-run propagation.
+
+### Layers and Inspection
+
+Pass `showLayers: true` to render layer annotations in ASCII trees:
+
+```ts
+const ascii = inspectionNodeToAscii(inspectTraceTarget(model, result.trace, speed.id), {
+  showMeta: true,
+  showLayers: true,
+});
+// └── Speed [ratio] = 50 {units: {"num":["m"],"denom":["s"]}}
+//     ├── Distance [input] = 100 {units: {"num":["m"],"denom":[]}}
+//     └── Time [input] = 2 {units: {"num":["s"],"denom":[]}}
+```
+
+### Do I Need Layers?
+
+Layers are the right choice when you need metadata that:
+- **Propagates** through the computation graph (dimensional analysis, confidence)
+- **Survives** freeze/hydrate for client consumption
+- **Inspects** alongside values in debugging trees
+
+If you only need static presentation metadata that doesn't propagate, `display-hints` is a minimal entry point. If you don't need any of this yet, simply don't register any layers — nothing changes in the core API.
+
+
 ## Validation
 
 The validation module (`@spaceteams/weft/validate`) provides schema-based validation that integrates with the [Standard Schema V1](https://github.com/standard-schema/standard-schema) ecosystem (Zod, Valibot, ArkType, etc.).
@@ -443,11 +634,12 @@ Tree-shake by importing only what you need:
 
 | Type | Description |
 | --- | --- |
-| `EvaluationResult` | `{ values, missing, order, trace }` |
-| `TraceStep` | Per-rule execution trace (target, deps, inputs, output, ruleSpec) |
+| `EvaluationResult` | `{ values, missing, order, trace, layers }` |
+| `TraceStep` | Per-rule execution trace (target, deps, inputs, output, ruleSpec, layerInputs, layerOutputs) |
 | `OverlayEvaluationResult` | Evaluation + `overlayedFacts` + `origins` |
 | `ValueDelta` | Discriminated union: `added` / `removed` / `changed` |
 | `ValueOrigin` | `"base"` / `"overlay"` / `"derived"` |
+| `LayerEvaluator<T>` | Defines how a layer propagates through the computation graph |
 
 ### Draft Types
 

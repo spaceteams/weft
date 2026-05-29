@@ -1,9 +1,13 @@
 import { mapToFactBag } from "../../facts";
 import type { CompiledModel } from "../../model";
 import { snapshotModel } from "../../model/snapshot-model";
-import type { CanonicalJson } from "../../snapshot/canonicalize";
+import type { CanonicalFactBag } from "../../snapshot/canonicalize";
 import { type CanonicalDelta, canonicalizeDelta } from "../../snapshot/canonicalizeDelta";
 import { canonicalizeFacts } from "../../snapshot/canonicalizeFacts";
+import {
+  canonicalizeLayerValues,
+  type FrozenLayerValues,
+} from "../../snapshot/canonicalizeLayerValues";
 import {
   type CanonicalTraceStep,
   canonicalizeTraceStep,
@@ -56,10 +60,11 @@ export type FrozenEvaluatedDraft = {
   readonly version: number;
   readonly draftId: string;
   readonly snapshot: FrozenSnapshot;
-  readonly base: Record<string, CanonicalJson>;
-  readonly overlay: Record<string, CanonicalJson>;
-  readonly effective: Record<string, CanonicalJson>;
-  readonly values: Record<string, CanonicalJson>;
+  readonly base: CanonicalFactBag;
+  readonly overlay: CanonicalFactBag;
+  readonly effective: CanonicalFactBag;
+  readonly values: CanonicalFactBag;
+  readonly layers?: FrozenLayerValues;
   readonly deltas: CanonicalDelta[];
   readonly trace: readonly CanonicalTraceStep[];
   readonly frozenAt: string;
@@ -79,7 +84,9 @@ export function freezeEvaluatedDraft(
   const snapshot = createFrozenSnapshot(model, evaluated);
   const draft = evaluated.draft;
 
-  return {
+  const layers = canonicalizeLayerValues(model.layers, evaluated.result.layers);
+
+  const result: FrozenEvaluatedDraft = {
     version: CURRENT_FROZEN_VERSION,
     draftId: draft.draftId,
     snapshot,
@@ -96,4 +103,10 @@ export function freezeEvaluatedDraft(
 
     frozenAt: snapshot.createdAt,
   };
+
+  if (layers) {
+    (result as { layers?: typeof layers }).layers = layers;
+  }
+
+  return result;
 }

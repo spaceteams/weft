@@ -1,5 +1,6 @@
 import type { KeyId } from "../key";
 import type { KeyMeta } from "../key-meta";
+import type { LayerMeta } from "../layer-meta";
 import type { ValidationSeverity } from "../validate/validation-result";
 
 /**
@@ -63,4 +64,10 @@ export type ModelStructure = {
    * without parsing full JSON schemas.
    */
   readonly keyValueTypes?: ReadonlyMap<KeyId, KeyValueType>;
+  /**
+   * Optional layer metadata from a frozen model.
+   * Contains layer names, versions, and serialized input annotations.
+   * Present on hydrated frozen models that had registered layers.
+   */
+  readonly layers?: readonly LayerMeta[];
 };

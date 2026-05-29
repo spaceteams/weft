@@ -89,6 +89,36 @@ describe("hydrateModel", () => {
     expect(hydrated.dependentsByKey.get("equity")).toContain("total");
     expect(hydrated.keyMeta.get("equity")).toEqual({ label: "Eigenkapital", group: "PASSIVA" });
   });
+
+  it("preserves layer metadata through freeze/hydrate", () => {
+    const a = key<number>("layerA");
+    const b = key<number>("layerB");
+
+    const ml = createModel();
+    ml.input(a);
+    ml.layer({ name: "units", version: "2", eval: () => undefined });
+    ml.annotate(a, "units", { num: ["m"], denom: [] });
+    ml.rule({
+      __kind: "rule",
+      target: b,
+      deps: [a],
+      spec: { op: "id" },
+      eval: (get) => ({ output: get(a) }),
+    });
+
+    const result = compileModel(ml.build());
+    if (!result.ok) throw new Error("compile failed");
+
+    const frozen = freezeModel(result.model);
+    const json = JSON.parse(JSON.stringify(frozen));
+    const hydrated = hydrateModel(json);
+
+    expect(hydrated.layers).toBeDefined();
+    expect(hydrated.layers).toHaveLength(1);
+    expect(hydrated.layers![0].name).toBe("units");
+    expect(hydrated.layers![0].version).toBe("2");
+    expect(hydrated.layers![0].inputs).toEqual({ layerA: { denom: [], num: ["m"] } });
+  });
 });
 
 // ---------------------------------------------------------------------------

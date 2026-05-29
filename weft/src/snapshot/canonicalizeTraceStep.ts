@@ -15,6 +15,11 @@ export type CanonicalTraceStep = {
   readonly inputs: Record<KeyId, CanonicalJson>;
   readonly output: CanonicalJson;
   readonly detail: Record<string, CanonicalJson>;
+
+  /** Per-layer dependency values used by this step, keyed by layer name then dep key. */
+  readonly layerInputs?: Readonly<Record<string, Record<KeyId, CanonicalJson>>>;
+  /** Per-layer computed output for this step's target, keyed by layer name. */
+  readonly layerOutputs?: Readonly<Record<string, CanonicalJson>>;
 };
 
 export function canonicalizeTraceStep(model: CompiledModel, step: TraceStep): CanonicalTraceStep {
@@ -42,5 +47,39 @@ export function canonicalizeTraceStep(model: CompiledModel, step: TraceStep): Ca
     inputs,
     output: canonicalizeValue(model, step.target, step.output),
     detail,
+    ...(step.layerInputs && {
+      layerInputs: canonicalizeTraceLayerInputs(model, step.layerInputs),
+    }),
+    ...(step.layerOutputs && {
+      layerOutputs: canonicalizeTraceLayerOutputs(model, step.layerOutputs),
+    }),
   };
+}
+
+function canonicalizeTraceLayerInputs(
+  model: CompiledModel,
+  layerInputs: Readonly<Record<string, Record<KeyId, unknown>>>,
+): Record<string, Record<KeyId, CanonicalJson>> {
+  const result: Record<string, Record<KeyId, CanonicalJson>> = {};
+  for (const [layerName, deps] of Object.entries(layerInputs)) {
+    const evaluator = model.layers.find((l) => l.name === layerName);
+    const canonicalDeps: Record<KeyId, CanonicalJson> = {};
+    for (const [k, v] of Object.entries(deps)) {
+      canonicalDeps[k] = evaluator?.codec ? evaluator.codec.encode(v) : canonicalize(v);
+    }
+    result[layerName] = canonicalDeps;
+  }
+  return result;
+}
+
+function canonicalizeTraceLayerOutputs(
+  model: CompiledModel,
+  layerOutputs: Readonly<Record<string, unknown>>,
+): Record<string, CanonicalJson> {
+  const result: Record<string, CanonicalJson> = {};
+  for (const [layerName, value] of Object.entries(layerOutputs)) {
+    const evaluator = model.layers.find((l) => l.name === layerName);
+    result[layerName] = evaluator?.codec ? evaluator.codec.encode(value) : canonicalize(value);
+  }
+  return result;
 }

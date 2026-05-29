@@ -1,6 +1,7 @@
 import type { Input } from "../input";
 import type { AnyKey, KeyId, KeySemantics } from "../key";
 import type { KeyMeta } from "../key-meta";
+import type { LayerEvaluator } from "../layer";
 import type { Rule } from "../rule";
 import type { Constraint } from "../validate/constraint";
 import type { KeySchema } from "../validate/key-schema";
@@ -12,6 +13,9 @@ export type Model = {
   readonly keyMeta: ReadonlyMap<KeyId, KeyMeta>;
   readonly schemas: ReadonlyMap<KeyId, KeySchema<unknown>>;
   readonly constraints: readonly Constraint[];
+  // biome-ignore lint: Layer evaluators are stored type-erased
+  readonly layers: readonly LayerEvaluator<any>[];
+  readonly layerInputs: ReadonlyMap<string, ReadonlyMap<KeyId, unknown>>;
   /** Explicit JSON Schemas provided by users for keys that don't have auto-extractable schemas. */
   readonly explicitJsonSchemas: ReadonlyMap<KeyId, Record<string, unknown>>;
 };

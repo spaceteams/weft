@@ -249,15 +249,15 @@ describe("createModel key metadata for rules", () => {
         spec: { type: "identity" },
         eval: (get) => ({ output: get(a) }),
       }),
-      { label: "Result", description: "The result", unit: "\u20ac", semanticType: "currency" },
+      { label: "Result", description: "The result", group: "RESULT", order: 1 },
     );
 
     const model = m.build();
     expect(model.keyMeta.get("result")).toEqual({
       label: "Result",
       description: "The result",
-      unit: "\u20ac",
-      semanticType: "currency",
+      group: "RESULT",
+      order: 1,
     });
   });
 
@@ -275,10 +275,10 @@ describe("createModel key metadata for rules", () => {
         eval: (get) => ({ output: get(a) }),
       }),
     );
-    m.meta(result, { unit: "\u20ac", semanticType: "currency" });
+    m.meta(result, { group: "RESULT", order: 1 });
 
     const model = m.build();
-    expect(model.keyMeta.get("result")).toEqual({ unit: "\u20ac", semanticType: "currency" });
+    expect(model.keyMeta.get("result")).toEqual({ group: "RESULT", order: 1 });
   });
 
   it("m.meta() merges with existing keyMeta from rule shorthand", () => {
@@ -296,13 +296,13 @@ describe("createModel key metadata for rules", () => {
       }),
       { label: "Result" },
     );
-    m.meta(result, { unit: "\u20ac", semanticType: "currency" });
+    m.meta(result, { group: "RESULT", order: 1 });
 
     const model = m.build();
     expect(model.keyMeta.get("result")).toEqual({
       label: "Result",
-      unit: "\u20ac",
-      semanticType: "currency",
+      group: "RESULT",
+      order: 1,
     });
   });
 
@@ -311,10 +311,10 @@ describe("createModel key metadata for rules", () => {
 
     const m = createModel();
     m.input(a, { label: "A" });
-    m.meta(a, { unit: "kg", group: "WEIGHTS" });
+    m.meta(a, { group: "WEIGHTS", order: 2 });
 
     const model = m.build();
-    expect(model.keyMeta.get("a")).toEqual({ label: "A", unit: "kg", group: "WEIGHTS" });
+    expect(model.keyMeta.get("a")).toEqual({ label: "A", group: "WEIGHTS", order: 2 });
   });
 
   it("RuleOptions.meta accepts full KeyMeta", () => {
@@ -331,14 +331,14 @@ describe("createModel key metadata for rules", () => {
         spec: { type: "identity" },
         eval: (get) => ({ output: get(a) }),
       }),
-      { meta: { label: "Result", unit: "\u20ac", semanticType: "currency" }, schema },
+      { meta: { label: "Result", group: "RESULT", order: 1 }, schema },
     );
 
     const model = m.build();
     expect(model.keyMeta.get("result")).toEqual({
       label: "Result",
-      unit: "\u20ac",
-      semanticType: "currency",
+      group: "RESULT",
+      order: 1,
     });
     expect(model.schemas.get("result")).toBeDefined();
   });

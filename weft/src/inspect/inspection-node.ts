@@ -19,6 +19,8 @@ export type InspectionNode = {
   execution?: {
     value?: unknown;
     trace?: TraceStep;
+    /** Per-layer values at this node, keyed by layer name. */
+    layers?: Record<string, unknown>;
   };
 
   change?: Change;

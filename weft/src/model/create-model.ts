@@ -2,6 +2,7 @@ import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { type Input, input } from "../input";
 import type { Key, KeyId, KeySemantics } from "../key";
 import type { KeyMeta } from "../key-meta";
+import type { LayerEvaluator } from "../layer";
 import type { Rule } from "../rule";
 import type { Constraint } from "../validate/constraint";
 import type { KeySchema } from "../validate/key-schema";
@@ -42,6 +43,8 @@ export function createModel() {
   const schemas: Map<KeyId, KeySchema<unknown>> = new Map();
   const explicitJsonSchemas: Map<KeyId, Record<string, unknown>> = new Map();
   const constraints: Constraint[] = [];
+  const layers: LayerEvaluator<unknown>[] = [];
+  const layerInputs: Map<string, Map<KeyId, unknown>> = new Map();
   return {
     input<T>(
       k: Key<T>,
@@ -106,6 +109,25 @@ export function createModel() {
     constraint(def: Constraint): void {
       constraints.push(def);
     },
+    /**
+     * Register a layer evaluator on the model.
+     * Layers are evaluated in registration order during evaluation.
+     */
+    layer<T>(evaluator: LayerEvaluator<T>): void {
+      layers.push(evaluator as LayerEvaluator<unknown>);
+    },
+    /**
+     * Annotate a key with a layer value (typically for inputs).
+     * This seeds the layer's value for the given key before evaluation begins.
+     */
+    annotate<T>(k: Key<unknown>, layerName: string, value: T): void {
+      let map = layerInputs.get(layerName);
+      if (!map) {
+        map = new Map();
+        layerInputs.set(layerName, map);
+      }
+      map.set(k.id, value);
+    },
     build(): Model {
       return {
         inputs,
@@ -114,6 +136,8 @@ export function createModel() {
         keyMeta,
         schemas,
         constraints,
+        layers,
+        layerInputs,
         explicitJsonSchemas,
       };
     },

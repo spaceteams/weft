@@ -275,5 +275,3 @@ m.input(category, {
 7. **Explicit JSON Schema as fallback** — The `~standard.jsonSchema` auto-extraction only works with schema libraries that implement the StandardJSONSchemaV1 extension (e.g. Zod 3.24+). Valibot 1.4.0 does NOT support it. The `jsonSchema` option on `InputOptions`/`RuleOptions` provides a universal fallback for JSON Schema metadata regardless of schema library.
 
 8. **`keyValueTypes` is derived, not declared** — Rather than requiring model authors to redundantly declare value types alongside schemas, `freezeModel` automatically derives `keyValueTypes` from the JSON Schema `type` field. Keys without schemas get `"unknown"`.
-
-9. **`semanticType` is for presentation ambiguity** — When JSON Schema alone can't distinguish intent (e.g. `{type: "number", min: 0, max: 1}` could be a percentage or a raw decimal), `KeyMeta.semanticType` provides an explicit hint for UI consumers.

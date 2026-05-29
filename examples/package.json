@@ -12,7 +12,10 @@
     "format": "biome format --write ."
   },
   "dependencies": {
-    "@spaceteams/weft": "workspace:*"
+    "@spaceteams/weft": "workspace:*",
+    "@spaceteams/weft-layer-display-hints": "workspace:*",
+    "@spaceteams/weft-layer-dimensional": "workspace:*",
+    "@spaceteams/weft-layer-provenance": "workspace:*"
   },
   "devDependencies": {
     "valibot": "1.4.0"

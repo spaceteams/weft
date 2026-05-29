@@ -27,6 +27,7 @@ export function inspectTraceTarget(
         },
         execution: {
           value: parentStep?.inputs[key],
+          layers: extractInputLayerValues(parentStep, key),
         },
         label: keyMeta?.label ?? key,
         children: [],
@@ -45,10 +46,29 @@ export function inspectTraceTarget(
       execution: {
         value: step?.output,
         trace: step,
+        layers: step?.layerOutputs ? { ...step.layerOutputs } : undefined,
       },
       label: step?.keyMeta?.label ?? key,
       children: step?.deps.map((dep) => build(dep, step)) ?? [],
     };
   }
   return build(target);
+}
+
+/**
+ * Extract layer values for an input key from the parent trace step's layer inputs.
+ */
+function extractInputLayerValues(
+  parentStep: TraceStep | undefined,
+  key: KeyId,
+): Record<string, unknown> | undefined {
+  if (!parentStep?.layerInputs) return undefined;
+  let result: Record<string, unknown> | undefined;
+  for (const [layerName, layerDeps] of Object.entries(parentStep.layerInputs)) {
+    if (key in layerDeps) {
+      result ??= {};
+      result[layerName] = layerDeps[key];
+    }
+  }
+  return result;
 }
