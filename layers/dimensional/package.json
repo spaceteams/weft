@@ -1,6 +1,6 @@
 {
   "name": "@spaceteams/weft-layer-dimensional",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "SI unit propagation and dimensional analysis layer for @spaceteams/weft",
   "type": "module",
   "files": [
