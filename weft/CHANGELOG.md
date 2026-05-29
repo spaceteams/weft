@@ -1,5 +1,17 @@
 # @spaceteams/weft
 
+## 0.5.0
+
+### Minor Changes
+
+- 1e4bb46: many new rules and decision dsl
+- 1e4bb46: introduce layers and strip keymeta
+- 1e4bb46: validation capabilities
+
+### Patch Changes
+
+- 1e4bb46: add analyze frozen draft helper
+
 ## 0.4.0
 
 ### Minor Changes

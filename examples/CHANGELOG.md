@@ -1,5 +1,24 @@
 # @spaceteams/weft-examples
 
+## 0.5.0
+
+### Minor Changes
+
+- 1e4bb46: many new rules and decision dsl
+- 1e4bb46: introduce layers and strip keymeta
+- 1e4bb46: validation capabilities
+
+### Patch Changes
+
+- Updated dependencies [1e4bb46]
+- Updated dependencies [1e4bb46]
+- Updated dependencies [1e4bb46]
+- Updated dependencies [1e4bb46]
+  - @spaceteams/weft@0.5.0
+  - @spaceteams/weft-layer-dimensional@0.2.0
+  - @spaceteams/weft-layer-display-hints@0.2.0
+  - @spaceteams/weft-layer-provenance@0.2.0
+
 ## 0.4.0
 
 ### Minor Changes
