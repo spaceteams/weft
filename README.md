@@ -47,6 +47,9 @@ const analysis = analyzeDraft(model, draft, "lenient");
 | Package | Description |
 |---------|-------------|
 | [`@spaceteams/weft`](./weft/) | Core library |
+| [`@spaceteams/weft-layer-dimensional`](./layers/dimensional/) | SI unit propagation and dimensional analysis layer |
+| [`@spaceteams/weft-layer-display-hints`](./layers/display-hints/) | Non-propagating display hints (unit label, semantic type) |
+| [`@spaceteams/weft-layer-provenance`](./layers/provenance/) | Source tracking with confidence scoring |
 | [`@spaceteams/weft-examples`](./examples/) | Integration tests and usage examples |
 
 ## Repository Structure
@@ -66,6 +69,10 @@ weft/                     ← repo root (pnpm monorepo)
 │   │   ├── snapshot/         ← canonical serialization and fingerprinting
 │   │   └── validate/         ← schema validation, constraints, Standard Schema
 │   └── package.json
+├── layers/               ← optional layer packages
+│   ├── dimensional/          ← @spaceteams/weft-layer-dimensional
+│   ├── display-hints/        ← @spaceteams/weft-layer-display-hints
+│   └── provenance/           ← @spaceteams/weft-layer-provenance
 ├── examples/             ← integration tests
 │   └── src/*.test.ts
 ├── biome.json            ← linter + formatter
@@ -114,6 +121,7 @@ See the [library README](./weft/README.md) for full API documentation including:
 
 - Core concepts (Keys, Rules, Models)
 - Evaluation and what-if analysis
+- **Layers** — optional parallel evaluation tracks (units, provenance, display hints)
 - Server/client freeze/hydrate pattern
 - Validation with Standard Schema integration
 - Inspection and debugging tools

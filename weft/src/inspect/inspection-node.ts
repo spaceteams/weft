@@ -2,7 +2,6 @@ import type { TraceStep } from "../evaluate/trace-step";
 import type { KeyId } from "../key";
 import type { KeyMeta } from "../key-meta";
 import type { Change } from "../overlay/explain-diff";
-import type { RuleMeta } from "../rule/rule-meta";
 
 export type InspectionNode = {
   key: KeyId;
@@ -11,7 +10,6 @@ export type InspectionNode = {
 
   meta?: {
     key?: KeyMeta;
-    rule?: RuleMeta;
   };
 
   structure?: {
@@ -21,6 +19,8 @@ export type InspectionNode = {
   execution?: {
     value?: unknown;
     trace?: TraceStep;
+    /** Per-layer values at this node, keyed by layer name. */
+    layers?: Record<string, unknown>;
   };
 
   change?: Change;

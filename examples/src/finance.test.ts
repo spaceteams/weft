@@ -13,6 +13,7 @@ import {
   sum,
   toGraph,
 } from "@spaceteams/weft";
+import { displayHint, displayHintsLayer } from "@spaceteams/weft-layer-display-hints";
 import { expect, it } from "vitest";
 
 const equity = key<number>("equity");
@@ -21,20 +22,23 @@ const total = key<number>("total");
 const equityRatio = key<number>("equityRatio");
 
 const m = createModel();
+m.layer(displayHintsLayer);
+
 m.input(equity, {
   label: "Eigenkapital",
   group: "PASSIVA",
   order: 1,
-  unit: "EUR",
   description: "Eigenkapital des Unternehmens",
 });
+m.annotate(equity, "display-hints", displayHint({ unit: "EUR", semanticType: "currency" }));
+
 m.input(liabilities, {
   label: "Fremdkapital",
   group: "PASSIVA",
   order: 2,
-  unit: "EUR",
   description: "Fremdkapital des Unternehmens",
 });
+m.annotate(liabilities, "display-hints", displayHint({ unit: "EUR", semanticType: "currency" }));
 
 m.rule(sum(defaultNumberOps, total, [equity, liabilities]), { label: "Bilanzsumme" });
 m.rule(ratio(defaultNumberOps, equityRatio, equity, total), { label: "Eigenkapitalquote" });

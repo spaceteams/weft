@@ -74,15 +74,21 @@ describe("migrateFrozenArtifact", () => {
     expect(migrated.trace).toEqual([]);
   });
 
-  it("preserves existing trace when present", () => {
+  it("migrates trace steps: renames ruleMeta to keyMeta", () => {
     const v0 = loadFixture("v0-evaluated.json");
-    const originalTrace = v0.trace;
-    expect(Array.isArray(originalTrace)).toBe(true);
-    expect((originalTrace as unknown[]).length).toBeGreaterThan(0);
+    expect(Array.isArray(v0.trace)).toBe(true);
+    expect((v0.trace as unknown[]).length).toBeGreaterThan(0);
 
     const migrated = migrateFrozenArtifact(v0);
+    const trace = migrated.trace as Array<Record<string, unknown>>;
 
-    expect(migrated.trace).toEqual(originalTrace);
+    // ruleMeta removed, keyMeta populated
+    for (const step of trace) {
+      expect(step).not.toHaveProperty("ruleMeta");
+      expect(step).toHaveProperty("keyMeta");
+    }
+    expect((trace[0].keyMeta as Record<string, unknown>).label).toBe("Bilanzsumme");
+    expect((trace[1].keyMeta as Record<string, unknown>).label).toBe("Eigenkapitalquote");
   });
 
   it("is a no-op for artifacts already at current version", () => {

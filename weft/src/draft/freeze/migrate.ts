@@ -1,10 +1,14 @@
 import { migrateV0toV1 } from "./migrations/v0-to-v1";
+import { migrateV1toV2 } from "./migrations/v1-to-v2";
+import { migrateV2toV3 } from "./migrations/v2-to-v3";
 import { CURRENT_FROZEN_VERSION } from "./version";
 
 type Migration = (artifact: Record<string, unknown>) => Record<string, unknown>;
 
 const migrations: Record<number, Migration> = {
   0: migrateV0toV1,
+  1: migrateV1toV2,
+  2: migrateV2toV3,
 };
 
 /**

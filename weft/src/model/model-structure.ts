@@ -1,6 +1,6 @@
 import type { KeyId } from "../key";
 import type { KeyMeta } from "../key-meta";
-import type { RuleMeta } from "../rule/rule-meta";
+import type { LayerMeta } from "../layer-meta";
 import type { ValidationSeverity } from "../validate/validation-result";
 
 /**
@@ -29,7 +29,6 @@ export type ModelStructure = {
   readonly depsByTarget: ReadonlyMap<KeyId, readonly KeyId[]>;
   readonly dependentsByKey: ReadonlyMap<KeyId, readonly KeyId[]>;
   readonly keyMeta: ReadonlyMap<KeyId, KeyMeta>;
-  readonly ruleMeta: ReadonlyMap<KeyId, RuleMeta>;
   /**
    * Optional map from rule target to its spec object.
    * Enables {@link inspectModelTarget} on hydrated frozen models.
@@ -65,4 +64,10 @@ export type ModelStructure = {
    * without parsing full JSON schemas.
    */
   readonly keyValueTypes?: ReadonlyMap<KeyId, KeyValueType>;
+  /**
+   * Optional layer metadata from a frozen model.
+   * Contains layer names, versions, and serialized input annotations.
+   * Present on hydrated frozen models that had registered layers.
+   */
+  readonly layers?: readonly LayerMeta[];
 };

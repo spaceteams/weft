@@ -3,6 +3,8 @@ import type { InspectionNode } from "./inspection-node";
 type RenderOptions = {
   showMeta: boolean;
   showChange: boolean;
+  /** When true, append layer values as `{layer: value, ...}` annotations. */
+  showLayers?: boolean;
 };
 
 /**
@@ -36,8 +38,11 @@ const formatDetailAnnotation = (
   }
 };
 
-const formatLabel = (node: InspectionNode, { showMeta, showChange }: RenderOptions): string => {
-  let label = node.meta?.rule?.label ?? node.label;
+const formatLabel = (
+  node: InspectionNode,
+  { showMeta, showChange, showLayers }: RenderOptions,
+): string => {
+  let label = node.label;
 
   if (showMeta) {
     label += ` [${node.kind}]`;
@@ -73,7 +78,23 @@ const formatLabel = (node: InspectionNode, { showMeta, showChange }: RenderOptio
     }
   }
 
+  // layer annotations
+  if (showLayers && node.execution?.layers) {
+    const entries = Object.entries(node.execution.layers);
+    if (entries.length > 0) {
+      const formatted = entries.map(([name, value]) => `${name}: ${formatLayerValue(value)}`);
+      label += ` {${formatted.join(", ")}}`;
+    }
+  }
+
   return label;
+};
+
+const formatLayerValue = (value: unknown): string => {
+  if (value === null || value === undefined) return String(value);
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
 };
 
 export const inspectionNodeToAscii = (root: InspectionNode, options: RenderOptions): string => {

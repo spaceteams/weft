@@ -163,44 +163,6 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
     });
   });
 
-  describe("semanticType in keyMeta", () => {
-    it("is preserved through freeze/hydrate", () => {
-      const rate = key<number>("rate");
-
-      const m = createModel();
-      m.input(rate, {
-        meta: { label: "Interest Rate", semanticType: "percent" },
-        schema: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
-        jsonSchema: { type: "number", minimum: 0, maximum: 1 },
-      });
-
-      const compiled = compileOrFail(m.build());
-      const frozen = JSON.parse(JSON.stringify(freezeModel(compiled)));
-      const hydrated = hydrateModel(frozen);
-
-      expect(hydrated.keyMeta.get("rate")?.semanticType).toBe("percent");
-    });
-
-    it("supports all semantic type values", () => {
-      const pct = key<number>("pct");
-      const price = key<number>("price");
-      const dob = key<string>("dob");
-
-      const m = createModel();
-      m.input(pct, { meta: { semanticType: "percent" } });
-      m.input(price, { meta: { semanticType: "currency" } });
-      m.input(dob, { meta: { semanticType: "date" } });
-
-      const compiled = compileOrFail(m.build());
-      const frozen = JSON.parse(JSON.stringify(freezeModel(compiled)));
-      const hydrated = hydrateModel(frozen);
-
-      expect(hydrated.keyMeta.get("pct")?.semanticType).toBe("percent");
-      expect(hydrated.keyMeta.get("price")?.semanticType).toBe("currency");
-      expect(hydrated.keyMeta.get("dob")?.semanticType).toBe("date");
-    });
-  });
-
   describe("~standard.jsonSchema auto-extraction", () => {
     it("Valibot 1.4.0 does not expose ~standard.jsonSchema (known limitation)", () => {
       // Valibot 1.4.0 only exposes { version, vendor, validate } on ~standard.

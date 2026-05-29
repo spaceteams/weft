@@ -234,3 +234,112 @@ describe("createModel with schemas and constraints", () => {
     expect(result.issues[0].message).toContain("unknown_key");
   });
 });
+
+describe("createModel key metadata for rules", () => {
+  it("rule shorthand populates keyMeta with all KeyMeta fields", () => {
+    const a = key<number>("a");
+    const result = key<number>("result");
+
+    const m = createModel();
+    m.input(a);
+    m.rule(
+      rule({
+        target: result,
+        deps: [a],
+        spec: { type: "identity" },
+        eval: (get) => ({ output: get(a) }),
+      }),
+      { label: "Result", description: "The result", group: "RESULT", order: 1 },
+    );
+
+    const model = m.build();
+    expect(model.keyMeta.get("result")).toEqual({
+      label: "Result",
+      description: "The result",
+      group: "RESULT",
+      order: 1,
+    });
+  });
+
+  it("m.meta() sets keyMeta for any key", () => {
+    const a = key<number>("a");
+    const result = key<number>("result");
+
+    const m = createModel();
+    m.input(a);
+    m.rule(
+      rule({
+        target: result,
+        deps: [a],
+        spec: { type: "identity" },
+        eval: (get) => ({ output: get(a) }),
+      }),
+    );
+    m.meta(result, { group: "RESULT", order: 1 });
+
+    const model = m.build();
+    expect(model.keyMeta.get("result")).toEqual({ group: "RESULT", order: 1 });
+  });
+
+  it("m.meta() merges with existing keyMeta from rule shorthand", () => {
+    const a = key<number>("a");
+    const result = key<number>("result");
+
+    const m = createModel();
+    m.input(a);
+    m.rule(
+      rule({
+        target: result,
+        deps: [a],
+        spec: { type: "identity" },
+        eval: (get) => ({ output: get(a) }),
+      }),
+      { label: "Result" },
+    );
+    m.meta(result, { group: "RESULT", order: 1 });
+
+    const model = m.build();
+    expect(model.keyMeta.get("result")).toEqual({
+      label: "Result",
+      group: "RESULT",
+      order: 1,
+    });
+  });
+
+  it("m.meta() merges with existing keyMeta from input", () => {
+    const a = key<number>("a");
+
+    const m = createModel();
+    m.input(a, { label: "A" });
+    m.meta(a, { group: "WEIGHTS", order: 2 });
+
+    const model = m.build();
+    expect(model.keyMeta.get("a")).toEqual({ label: "A", group: "WEIGHTS", order: 2 });
+  });
+
+  it("RuleOptions.meta accepts full KeyMeta", () => {
+    const a = key<number>("a");
+    const result = key<number>("result");
+    const schema = mockSchema<number>((value) => ({ value: value as number }));
+
+    const m = createModel();
+    m.input(a);
+    m.rule(
+      rule({
+        target: result,
+        deps: [a],
+        spec: { type: "identity" },
+        eval: (get) => ({ output: get(a) }),
+      }),
+      { meta: { label: "Result", group: "RESULT", order: 1 }, schema },
+    );
+
+    const model = m.build();
+    expect(model.keyMeta.get("result")).toEqual({
+      label: "Result",
+      group: "RESULT",
+      order: 1,
+    });
+    expect(model.schemas.get("result")).toBeDefined();
+  });
+});

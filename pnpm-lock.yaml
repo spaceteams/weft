@@ -41,10 +41,37 @@ importers:
       '@spaceteams/weft':
         specifier: workspace:*
         version: link:../weft
+      '@spaceteams/weft-layer-dimensional':
+        specifier: workspace:*
+        version: link:../layers/dimensional
+      '@spaceteams/weft-layer-display-hints':
+        specifier: workspace:*
+        version: link:../layers/display-hints
+      '@spaceteams/weft-layer-provenance':
+        specifier: workspace:*
+        version: link:../layers/provenance
     devDependencies:
       valibot:
         specifier: 1.4.0
         version: 1.4.0(typescript@5.9.3)
+
+  layers/dimensional:
+    dependencies:
+      '@spaceteams/weft':
+        specifier: workspace:*
+        version: link:../../weft
+
+  layers/display-hints:
+    dependencies:
+      '@spaceteams/weft':
+        specifier: workspace:*
+        version: link:../../weft
+
+  layers/provenance:
+    dependencies:
+      '@spaceteams/weft':
+        specifier: workspace:*
+        version: link:../../weft
 
   weft:
     dependencies:

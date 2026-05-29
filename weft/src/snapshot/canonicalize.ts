@@ -6,6 +6,12 @@ export type CanonicalJson =
   | CanonicalJson[]
   | { [key: string]: CanonicalJson };
 
+/**
+ * A canonical fact bag — the frozen counterpart of {@link FactBag}.
+ * All values are canonicalized for deterministic serialization.
+ */
+export type CanonicalFactBag = Record<string, CanonicalJson>;
+
 export function canonicalize(value: unknown): CanonicalJson {
   if (
     value === null ||

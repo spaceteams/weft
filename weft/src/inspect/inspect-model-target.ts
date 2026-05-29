@@ -17,13 +17,12 @@ export function inspectModelTarget(model: ModelStructure, target: string): Inspe
     const isRule = deps !== undefined;
     const spec = model.ruleSpecs?.get(key);
     const keyMeta = model.keyMeta.get(key);
-    const ruleMeta = model.ruleMeta.get(key);
+
     return {
       key,
       kind: isRule ? ((spec?.op as string) ?? "rule") : "input",
       meta: {
         key: keyMeta,
-        rule: ruleMeta,
       },
       structure: {
         ruleSpec: spec,

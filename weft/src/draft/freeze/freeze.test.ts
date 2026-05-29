@@ -71,6 +71,48 @@ describe("freezeEvaluatedDraft", () => {
     expect(ratioStep).toBeDefined();
     expect(ratioStep!.deps).toEqual(["equity", "total"]);
   });
+
+  it("freezes layer results when layers are registered", () => {
+    const a = key<number>("a");
+    const b = key<number>("b");
+
+    const ml = createModel();
+    ml.input(a, { label: "A" });
+    ml.layer({
+      name: "tag",
+      version: "1",
+      eval() {
+        return "derived";
+      },
+    });
+    ml.annotate(a, "tag", "input-tag");
+    ml.rule(
+      {
+        __kind: "rule",
+        target: b,
+        deps: [a],
+        spec: { op: "identity" },
+        eval: (get) => ({ output: get(a) }),
+      },
+      { label: "B" },
+    );
+
+    const compiled = compileModel(ml.build());
+    if (!compiled.ok) throw new Error("compile failed");
+    const lm = compiled.model;
+
+    const evaluated = evaluateDraft(
+      lm,
+      { draftId: "d", base: { a: 1 }, overlay: { a: 2 } },
+      "lenient",
+    );
+    const frozen = freezeEvaluatedDraft(lm, evaluated);
+
+    expect(frozen.layers).toBeDefined();
+    expect(frozen.layers!.tag).toBeDefined();
+    expect(frozen.layers!.tag.a).toBe("input-tag");
+    expect(frozen.layers!.tag.b).toBe("derived");
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import type { KeyId } from "../key";
 import type { KeyMeta } from "../key-meta";
-import type { RuleMeta } from "../rule/rule-meta";
+import type { CanonicalFactBag } from "../snapshot/canonicalize";
 import { type CanonicalJson, canonicalize } from "../snapshot/canonicalize";
 import type { ValidationSeverity } from "../validate/validation-result";
 import type { CompiledModel } from ".";
@@ -9,6 +9,16 @@ import type { KeyValueType, ModelStructure } from "./model-structure";
 // ---------------------------------------------------------------------------
 // FrozenModel — JSON-serializable representation of the model structure
 // ---------------------------------------------------------------------------
+
+/**
+ * Layer metadata stored in a frozen model: the layer's identity and its
+ * input annotations (the initial values seeded before evaluation).
+ */
+export type FrozenLayerMeta = {
+  readonly name: string;
+  readonly version: string;
+  readonly inputs: CanonicalFactBag;
+};
 
 /**
  * A JSON-serializable snapshot of a model's structural information.
@@ -26,7 +36,7 @@ export type FrozenModel = {
   readonly depsByTarget: Readonly<Record<KeyId, readonly KeyId[]>>;
   readonly dependentsByKey: Readonly<Record<KeyId, readonly KeyId[]>>;
   readonly keyMeta: Readonly<Record<KeyId, KeyMeta>>;
-  readonly ruleMeta: Readonly<Record<KeyId, RuleMeta>>;
+
   readonly ruleSpecs: Readonly<Record<KeyId, Record<string, CanonicalJson>>>;
   readonly jsonSchemas?: Readonly<
     Record<
@@ -44,6 +54,7 @@ export type FrozenModel = {
     readonly jsonSchema?: Record<string, CanonicalJson>;
   }>;
   readonly keyValueTypes?: Readonly<Record<KeyId, KeyValueType>>;
+  readonly layers?: readonly FrozenLayerMeta[];
 };
 
 /**
@@ -162,13 +173,32 @@ export function freezeModel(model: CompiledModel): FrozenModel {
     });
   }
 
+  // Freeze layer metadata (names, versions, and input annotations)
+  let frozenLayers: FrozenLayerMeta[] | undefined;
+  if (model.layers.length > 0) {
+    frozenLayers = model.layers.map((layer) => {
+      const inputAnnotations = model.layerInputs.get(layer.name);
+      const inputs: Record<KeyId, CanonicalJson> = {};
+      if (inputAnnotations) {
+        for (const [keyId, value] of inputAnnotations) {
+          if (layer.codec) {
+            inputs[keyId] = layer.codec.encode(value);
+          } else {
+            inputs[keyId] = canonicalize(value);
+          }
+        }
+      }
+      return { name: layer.name, version: layer.version, inputs };
+    });
+  }
+
   const result: FrozenModel = {
     inputKeys: [...model.inputKeys],
     orderedRuleTargets: [...model.orderedRuleTargets],
     depsByTarget: Object.fromEntries(model.depsByTarget),
     dependentsByKey: Object.fromEntries(model.dependentsByKey),
     keyMeta: Object.fromEntries(model.keyMeta),
-    ruleMeta: Object.fromEntries(model.ruleMeta),
+
     ruleSpecs,
   };
 
@@ -180,6 +210,9 @@ export function freezeModel(model: CompiledModel): FrozenModel {
   }
   if (keyValueTypes) {
     (result as { keyValueTypes?: typeof keyValueTypes }).keyValueTypes = keyValueTypes;
+  }
+  if (frozenLayers) {
+    (result as { layers?: typeof frozenLayers }).layers = frozenLayers;
   }
 
   return result;
@@ -197,7 +230,7 @@ export function hydrateModel(frozen: FrozenModel): ModelStructure {
     depsByTarget: new Map(Object.entries(frozen.depsByTarget)),
     dependentsByKey: new Map(Object.entries(frozen.dependentsByKey)),
     keyMeta: new Map(Object.entries(frozen.keyMeta)),
-    ruleMeta: new Map(Object.entries(frozen.ruleMeta)),
+
     ruleSpecs: new Map(Object.entries(frozen.ruleSpecs)),
   };
 
@@ -213,6 +246,9 @@ export function hydrateModel(frozen: FrozenModel): ModelStructure {
     (result as { keyValueTypes?: ModelStructure["keyValueTypes"] }).keyValueTypes = new Map(
       Object.entries(frozen.keyValueTypes) as [KeyId, KeyValueType][],
     );
+  }
+  if (frozen.layers) {
+    (result as { layers?: ModelStructure["layers"] }).layers = frozen.layers;
   }
 
   return result;

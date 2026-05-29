@@ -27,14 +27,12 @@ m.input(eigenkapital, {
   label: "Eigenkapital",
   group: "PASSIVA",
   order: 1,
-  unit: "EUR",
   description: "Eigenkapital des Unternehmens",
 });
 m.input(fremdkapital, {
   label: "Fremdkapital",
   group: "PASSIVA",
   order: 2,
-  unit: "EUR",
   description: "Fremdkapital des Unternehmens",
 });
 m.rule(sum(defaultNumberOps, total, [eigenkapital, fremdkapital]), { label: "Bilanzsumme" });
