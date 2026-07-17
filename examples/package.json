@@ -18,6 +18,6 @@
     "@spaceteams/weft-layer-provenance": "workspace:*"
   },
   "devDependencies": {
-    "valibot": "1.4.0"
+    "valibot": "1.4.2"
   }
 }
