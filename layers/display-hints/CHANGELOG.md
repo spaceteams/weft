@@ -1,5 +1,12 @@
 # @spaceteams/weft-layer-display-hints
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [5e6865c]
+  - @spaceteams/weft@0.6.0
+
 ## 0.2.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @spaceteams/weft
 
+## 0.6.0
+
+### Minor Changes
+
+- 5e6865c: rule improvements and better examples
+
 ## 0.5.0
 
 ### Minor Changes

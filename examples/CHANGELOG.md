@@ -1,5 +1,19 @@
 # @spaceteams/weft-examples
 
+## 0.6.0
+
+### Minor Changes
+
+- 5e6865c: rule improvements and better examples
+
+### Patch Changes
+
+- Updated dependencies [5e6865c]
+  - @spaceteams/weft@0.6.0
+  - @spaceteams/weft-layer-dimensional@0.6.0
+  - @spaceteams/weft-layer-display-hints@0.6.0
+  - @spaceteams/weft-layer-provenance@0.6.0
+
 ## 0.5.0
 
 ### Minor Changes
