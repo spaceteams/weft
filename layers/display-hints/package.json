@@ -1,6 +1,6 @@
 {
   "name": "@spaceteams/weft-layer-display-hints",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Non-propagating display hints layer (unit, semanticType) for @spaceteams/weft",
   "type": "module",
   "files": [
