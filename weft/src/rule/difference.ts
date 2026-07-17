@@ -1,7 +1,7 @@
-import type { AnyKey, Key } from "../key";
+import type { Key } from "../key";
 import type { Additive, OpsDescriptor } from "../semantics/algebra";
 import { type Rule, rule } from ".";
-import { type Operand, resolveOperand } from "./operand";
+import { type Operand, operandDep, resolveOperand } from "./operand";
 
 export type DifferenceSpec = {
   op: "difference";
@@ -22,13 +22,10 @@ export function difference<T>(
     minuend: minuend as Operand<unknown>,
     subtrahend: subtrahend as Operand<unknown>,
   };
-  const deps: AnyKey[] = [];
-  if (minuend.__kind === "key") deps.push(minuend);
-  if (subtrahend.__kind === "key") deps.push(subtrahend);
   return rule({
     target,
     spec,
-    deps,
+    deps: [...operandDep(minuend), ...operandDep(subtrahend)],
     eval: (get) => {
       const output = ops.sub(resolveOperand(minuend, get), resolveOperand(subtrahend, get));
       return { output };

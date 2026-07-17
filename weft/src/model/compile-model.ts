@@ -198,3 +198,20 @@ export function compileModel(model: Model): CompileResult {
     },
   };
 }
+
+/**
+ * Convenience wrapper around {@link compileModel} that throws on failure.
+ *
+ * Useful in scripts, tests, and situations where a compile error is
+ * unrecoverable. For production code that needs to handle issues
+ * programmatically, prefer the result-based {@link compileModel}.
+ */
+export function compileModelOrThrow(model: Model): CompiledModel {
+  const result = compileModel(model);
+  if (!result.ok) {
+    throw new Error(
+      `Model compilation failed:\n${result.issues.map((i) => `  [${i.code}] ${i.message}`).join("\n")}`,
+    );
+  }
+  return result.model;
+}

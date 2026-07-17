@@ -1,7 +1,7 @@
-import type { AnyKey, Key } from "../key";
+import type { Key } from "../key";
 import type { OpsDescriptor, Order } from "../semantics/algebra";
 import { type Rule, rule } from ".";
-import { type Operand, resolveOperand } from "./operand";
+import { type Operand, operandDeps, resolveOperand } from "./operand";
 
 export type MinSpec = {
   op: "min";
@@ -26,11 +26,10 @@ export function minimum<T>(
     opsDescriptor: { family: ops.family, version: ops.version },
     deps: deps as readonly Operand<unknown>[],
   };
-  const keyDeps: AnyKey[] = deps.filter((d): d is Key<T> => d.__kind === "key");
   return rule({
     target,
     spec,
-    deps: keyDeps,
+    deps: operandDeps(deps),
     eval: (get) => {
       const values = deps.map((d) => resolveOperand(d, get));
       const output = values.reduce((acc, v) => (ops.compare(v, acc) < 0 ? v : acc));
@@ -50,11 +49,10 @@ export function maximum<T>(
     opsDescriptor: { family: ops.family, version: ops.version },
     deps: deps as readonly Operand<unknown>[],
   };
-  const keyDeps: AnyKey[] = deps.filter((d): d is Key<T> => d.__kind === "key");
   return rule({
     target,
     spec,
-    deps: keyDeps,
+    deps: operandDeps(deps),
     eval: (get) => {
       const values = deps.map((d) => resolveOperand(d, get));
       const output = values.reduce((acc, v) => (ops.compare(v, acc) > 0 ? v : acc));

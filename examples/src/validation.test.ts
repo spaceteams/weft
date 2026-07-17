@@ -1,5 +1,5 @@
 import {
-  compileModel,
+  compileModelOrThrow,
   constraint,
   createModel,
   evaluate,
@@ -16,14 +16,6 @@ import type { ValidationResult } from "@spaceteams/weft/validate";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 
-function compileOrFail(model: ReturnType<ReturnType<typeof createModel>["build"]>) {
-  const result = compileModel(model);
-  if (!result.ok) {
-    throw new Error(result.issues.map((i) => i.message).join(", "));
-  }
-  return result.model;
-}
-
 describe("validation with valibot schemas", () => {
   it("validates facts with valibot schemas", () => {
     const amount = key<number>("amount");
@@ -33,7 +25,7 @@ describe("validation with valibot schemas", () => {
     m.input(amount, { schema: v.pipe(v.number(), v.minValue(0)) });
     m.input(rate, { schema: v.pipe(v.number(), v.minValue(0), v.maxValue(1)) });
 
-    const compiled = compileOrFail(m.build());
+    const compiled = compileModelOrThrow(m.build());
 
     const result = validateFacts(compiled, { amount: 1000, rate: 0.05 }) as ValidationResult;
     expect(result.valid).toBe(true);
@@ -48,7 +40,7 @@ describe("validation with valibot schemas", () => {
     m.input(amount, { schema: v.pipe(v.number(), v.minValue(0)) });
     m.input(rate, { schema: v.pipe(v.number(), v.minValue(0), v.maxValue(1)) });
 
-    const compiled = compileOrFail(m.build());
+    const compiled = compileModelOrThrow(m.build());
 
     const result = validateFacts(compiled, { amount: -100, rate: 1.5 }) as ValidationResult;
     expect(result.valid).toBe(false);
@@ -73,7 +65,7 @@ describe("validation with valibot schemas", () => {
     m.input(amount, { schema: v.pipe(v.number(), v.minValue(0)) });
     m.input(rate, { schema: v.pipe(v.number(), v.minValue(0), v.maxValue(1)) });
 
-    const compiled = compileOrFail(m.build());
+    const compiled = compileModelOrThrow(m.build());
 
     // Only "rate" is in the overlay — "amount" is not validated
     const result = validateOverlay(compiled, { rate: 0.5 }) as ValidationResult;
@@ -93,7 +85,7 @@ describe("validation with valibot schemas", () => {
     m.input(amount, { schema: v.pipe(v.number(), v.minValue(0)) });
     m.input(rate, { schema: v.pipe(v.number(), v.minValue(0), v.maxValue(1)) });
 
-    const compiled = compileOrFail(m.build());
+    const compiled = compileModelOrThrow(m.build());
 
     const draft = {
       draftId: "draft-1",
@@ -126,7 +118,7 @@ describe("validation with valibot schemas", () => {
       { schema: v.pipe(v.number(), v.maxValue(100)), schemaSeverity: "warning" },
     );
 
-    const compiled = compileOrFail(m.build());
+    const compiled = compileModelOrThrow(m.build());
 
     const evalResult = evaluate(compiled, { a: 60, b: 50 });
     const validation = validateEvaluation(compiled, evalResult) as ValidationResult;
@@ -159,7 +151,7 @@ describe("validation with valibot schemas", () => {
       }),
     );
 
-    const compiled = compileOrFail(m.build());
+    const compiled = compileModelOrThrow(m.build());
 
     // Passing case
     const passing = evaluate(compiled, { interest_rate: 0.03, repayment_rate: 0.02 });
@@ -194,7 +186,7 @@ describe("validation with valibot schemas", () => {
     const m = createModel();
     m.input(amount, { schema: contextAwareSchema });
 
-    const compiled = compileOrFail(m.build());
+    const compiled = compileModelOrThrow(m.build());
     validateFacts(compiled, { amount: 42 }, { phase: "submit", strict: true });
 
     expect(receivedContext).toEqual({ phase: "submit", strict: true });
@@ -212,7 +204,7 @@ describe("validation with valibot schemas", () => {
     const m = createModel();
     m.input(amount, { schema: asyncSchema });
 
-    const compiled = compileOrFail(m.build());
+    const compiled = compileModelOrThrow(m.build());
     const result = validateFacts(compiled, { amount: 5 });
 
     expect(() => validateSync(result)).toThrow("validateSync");
@@ -249,7 +241,7 @@ describe("validation with valibot schemas", () => {
       { schema: v.pipe(v.number(), v.maxValue(10_000_000)), schemaSeverity: "warning" },
     );
 
-    const compiled = compileOrFail(m.build());
+    const compiled = compileModelOrThrow(m.build());
 
     // Step 1: Validate inputs
     const facts = { principal: 50000, rate: 0.05, years: 10 };

@@ -1,5 +1,5 @@
 import {
-  compileModel,
+  compileModelOrThrow,
   createModel,
   key,
   toKeySchema,
@@ -8,14 +8,6 @@ import {
 } from "@spaceteams/weft";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-
-function compileOrFail(model: ReturnType<ReturnType<typeof createModel>["build"]>) {
-  const result = compileModel(model);
-  if (!result.ok) {
-    throw new Error(result.issues.map((i) => i.message).join(", "));
-  }
-  return result.model;
-}
 
 function buildModel() {
   const amount = key<number>("amount");
@@ -27,7 +19,7 @@ function buildModel() {
   m.input(rate, { schema: v.pipe(v.number(), v.minValue(0), v.maxValue(1)) });
   m.input(name); // no schema
 
-  return { compiled: compileOrFail(m.build()), amount, rate, name };
+  return { compiled: compileModelOrThrow(m.build()), amount, rate, name };
 }
 
 describe("Standard Schema output", () => {

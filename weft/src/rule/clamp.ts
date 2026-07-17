@@ -1,7 +1,7 @@
-import type { AnyKey, Key, KeyId } from "../key";
+import type { Key, KeyId } from "../key";
 import type { OpsDescriptor, Order } from "../semantics/algebra";
 import { type Rule, rule } from ".";
-import { type Operand, resolveOperand } from "./operand";
+import { type Operand, operandDep, resolveOperand } from "./operand";
 
 export type ClampSpec = {
   op: "clamp";
@@ -25,9 +25,7 @@ export function clamp<T>(
     min,
     max,
   };
-  const deps: AnyKey[] = [value];
-  if (min.__kind === "key") deps.push(min);
-  if (max.__kind === "key") deps.push(max);
+  const deps = [value, ...operandDep(min), ...operandDep(max)];
   return rule({
     target,
     spec,

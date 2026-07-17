@@ -115,6 +115,31 @@ pnpm install
 - **Linter/Formatter**: Biome 2.4
 - **Monorepo**: Turborepo
 
+## Examples
+
+The [`examples/`](./examples/) package contains runnable integration tests that demonstrate every major feature. See the [examples README](./examples/README.md) for a guided reading order.
+
+Highlights:
+
+| Example | Topics |
+|---------|--------|
+| [pricing-arithmetic](./examples/src/pricing-arithmetic.test.ts) | Core workflow: keys, model, compile, evaluate, inspect |
+| [shorthand-rules](./examples/src/shorthand-rules.test.ts) | `numericRules` shorthand, `algebraicRules`, `value()` literals |
+| [rule-factories](./examples/src/rule-factories.test.ts) | Arithmetic, financial, clamping, and conditional rules |
+| [non-numeric-rules](./examples/src/non-numeric-rules.test.ts) | Strings, booleans, decision tables, object helpers |
+| [finance](./examples/src/finance.test.ts) | Draft analysis: impact, grouped diffs, diff inspection trees |
+| [freeze-hydrate](./examples/src/freeze-hydrate.test.ts) | Server→client: freeze, JSON wire, hydrate, client-side inspection |
+| [validation](./examples/src/validation.test.ts) | Schema validation, constraints, end-to-end workflow |
+| [layers-dimensional](./examples/src/layers-dimensional.test.ts) | Automatic SI unit propagation |
+| [layers-provenance](./examples/src/layers-provenance.test.ts) | Source tracking with confidence scoring |
+
+Run them:
+
+```bash
+pnpm test          # all packages
+cd examples && pnpm run test   # examples only
+```
+
 ## Documentation
 
 See the [library README](./weft/README.md) for full API documentation including:

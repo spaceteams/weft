@@ -53,20 +53,20 @@ const formatLabel = (
     const delta = node.change.delta;
     switch (delta.kind) {
       case "added": {
-        label += ` = ${String(delta.after)} (addded)`;
+        label += ` = ${formatValue(delta.after)} (addded)`;
         break;
       }
       case "changed": {
-        label += ` = ${String(delta.before)} -> ${delta.after} (changed)`;
+        label += ` = ${formatValue(delta.before)} -> ${formatValue(delta.after)} (changed)`;
         break;
       }
       case "removed": {
-        label += ` = ${String(delta.before)} (removed)`;
+        label += ` = ${formatValue(delta.before)} (removed)`;
         break;
       }
     }
   } else if (node.execution?.value !== undefined) {
-    label += ` = ${String(node.execution?.value)}`;
+    label += ` = ${formatValue(node.execution?.value)}`;
   }
 
   // trace detail annotation
@@ -88,6 +88,12 @@ const formatLabel = (
   }
 
   return label;
+};
+
+const formatValue = (value: unknown): string => {
+  if (value === null || value === undefined) return String(value);
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
 };
 
 const formatLayerValue = (value: unknown): string => {
