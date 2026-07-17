@@ -3,133 +3,109 @@ import {
   compileModel,
   createModel,
   defaultNumberOps,
-  evaluate,
+  evaluateOverlay,
   inspectDiffTarget,
   inspectionNodeToAscii,
-  inspectModelTarget,
-  inspectTraceTarget,
   key,
   ratio,
   sum,
-  toGraph,
 } from "@spaceteams/weft";
-import { displayHint, displayHintsLayer } from "@spaceteams/weft-layer-display-hints";
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
+// A balance sheet model — simple enough to focus on draft analysis
 const equity = key<number>("equity");
 const liabilities = key<number>("liabilities");
 const total = key<number>("total");
 const equityRatio = key<number>("equityRatio");
 
 const m = createModel();
-m.layer(displayHintsLayer);
-
-m.input(equity, {
-  label: "Eigenkapital",
-  group: "PASSIVA",
-  order: 1,
-  description: "Eigenkapital des Unternehmens",
-});
-m.annotate(equity, "display-hints", displayHint({ unit: "EUR", semanticType: "currency" }));
-
-m.input(liabilities, {
-  label: "Fremdkapital",
-  group: "PASSIVA",
-  order: 2,
-  description: "Fremdkapital des Unternehmens",
-});
-m.annotate(liabilities, "display-hints", displayHint({ unit: "EUR", semanticType: "currency" }));
-
+m.input(equity, { label: "Eigenkapital", group: "PASSIVA" });
+m.input(liabilities, { label: "Fremdkapital", group: "PASSIVA" });
 m.rule(sum(defaultNumberOps, total, [equity, liabilities]), { label: "Bilanzsumme" });
 m.rule(ratio(defaultNumberOps, equityRatio, equity, total), { label: "Eigenkapitalquote" });
 
-const model = m.build();
-const compiledModel = compileModel(model);
-if (!compiledModel.ok) {
-  expect.fail(compiledModel.issues.map((i) => i.message).join());
+const compiled = compileModel(m.build());
+if (!compiled.ok) {
+  throw new Error(compiled.issues.map((i) => i.message).join());
 }
+const model = compiled.model;
 
-it("renders a graph", () => {
-  expect(toGraph(compiledModel.model)).toEqual({
-    nodes: ["equity", "liabilities", "total", "equityRatio"],
-    edges: [
-      {
-        from: "equity",
-        to: "total",
-      },
-      {
-        from: "liabilities",
-        to: "total",
-      },
-      {
-        from: "equity",
-        to: "equityRatio",
-      },
-      {
-        from: "total",
-        to: "equityRatio",
-      },
-    ],
+describe("what-if overlay analysis", () => {
+  it("evaluates an overlay and tracks value origins", () => {
+    const result = evaluateOverlay(model, { equity: 100, liabilities: 25 }, { liabilities: 10 });
+
+    // Overlay replaces liabilities: 25 → 10
+    expect(result.values.get("total")).toBe(110);
+    expect(result.values.get("equityRatio")).toBeCloseTo(0.909, 2);
+
+    // Origins tell you where each value came from
+    expect(result.origins.get("equity")?.kind).toBe("base");
+    expect(result.origins.get("liabilities")?.kind).toBe("overlay");
+    expect(result.origins.get("total")?.kind).toBe("derived");
+    expect(result.origins.get("equityRatio")?.kind).toBe("derived");
   });
 });
 
-it("evaluates", () => {
-  const result = evaluate(compiledModel.model, { equity: 100, liabilities: 25 });
-  expect(result.order).toEqual(["total", "equityRatio"]);
-  expect(result.values.get("total")).toEqual(125);
-  expect(result.values.get("equityRatio")).toEqual(0.8);
-});
+describe("draft analysis — full impact pipeline", () => {
+  const draft = {
+    draftId: "reduce-debt",
+    base: { equity: 100, liabilities: 25 },
+    overlay: { liabilities: 10 },
+  };
 
-it("explains", () => {
-  expect(
-    inspectionNodeToAscii(inspectModelTarget(compiledModel.model, total.id), {
-      showChange: true,
-      showMeta: true,
-    }),
-  ).toMatchInlineSnapshot(`
-    "└── Bilanzsumme [sum]
-        ├── Eigenkapital [input]
-        └── Fremdkapital [input]"
-  `);
-});
+  it("identifies direct, affected, and terminal keys", () => {
+    const { impact } = analyzeDraft(model, draft, "lenient");
 
-it("evaluates", () => {
-  const result = evaluate(compiledModel.model, { equity: 100, liabilities: 25 });
-  expect(
-    inspectionNodeToAscii(inspectTraceTarget(compiledModel.model, result.trace, equityRatio.id), {
-      showChange: true,
-      showMeta: true,
-    }),
-  ).toMatchInlineSnapshot(`
-    "└── Eigenkapitalquote [ratio] = 0.8
-        ├── Eigenkapital [input] = 100
-        └── Bilanzsumme [sum] = 125
-            ├── Eigenkapital [input] = 100
-            └── Fremdkapital [input] = 25"
-  `);
-});
+    // direct: keys changed in the overlay
+    expect(impact.direct).toEqual(["liabilities"]);
+    // affected: computed keys whose values changed as a result
+    expect(impact.affected).toEqual(["total", "equityRatio"]);
+    // terminal: affected keys with no further dependents
+    expect(impact.terminal).toEqual(["equityRatio"]);
+  });
 
-it("evaluates drafts and explains the diff", () => {
-  const { evaluated, changes } = analyzeDraft(
-    compiledModel.model,
-    {
-      draftId: "my-draft",
-      base: { equity: 100, liabilities: 25 },
-      overlay: { liabilities: 10 },
-    },
-    "lenient",
-  );
+  it("groups diffs by origin (overlay vs derived)", () => {
+    const { groupedDiffs } = analyzeDraft(model, draft, "lenient");
 
-  expect(
-    inspectionNodeToAscii(
-      inspectDiffTarget(compiledModel.model, evaluated.result, changes, equityRatio.id),
-      { showChange: true, showMeta: true },
-    ),
-  ).toMatchInlineSnapshot(`
-    "└── Eigenkapitalquote [ratio] = 0.8 -> 0.9090909090909091 (changed)
-        ├── Eigenkapital [input] = 100
-        └── Bilanzsumme [sum] = 125 -> 110 (changed)
-            ├── Eigenkapital [input] = 100
-            └── Fremdkapital [input] = 25 -> 10 (changed)"
-  `);
+    // Diffs are grouped: overlay changes first, then derived effects
+    const overlayGroup = groupedDiffs.find((g) => g.label === "Overlay inputs");
+    const derivedGroup = groupedDiffs.find((g) => g.label === "Derived values");
+
+    expect(overlayGroup).toBeDefined();
+    expect(overlayGroup!.deltas.map((d) => d.key)).toEqual(["liabilities"]);
+
+    expect(derivedGroup).toBeDefined();
+    expect(derivedGroup!.deltas.map((d) => d.key)).toContain("total");
+    expect(derivedGroup!.deltas.map((d) => d.key)).toContain("equityRatio");
+  });
+
+  it("explains changes with before/after and trace context", () => {
+    const { changes } = analyzeDraft(model, draft, "lenient");
+
+    // Each change includes the delta plus human-readable explanation
+    const totalChange = changes.find((c) => c.delta.key === "total");
+    expect(totalChange).toBeDefined();
+    expect(totalChange!.delta.kind).toBe("changed");
+    if (totalChange!.delta.kind === "changed") {
+      expect(totalChange!.delta.before).toBe(125);
+      expect(totalChange!.delta.after).toBe(110);
+    }
+  });
+
+  it("renders diff inspection tree with before → after annotations", () => {
+    const { evaluated, changes } = analyzeDraft(model, draft, "lenient");
+
+    expect(
+      inspectionNodeToAscii(inspectDiffTarget(model, evaluated.result, changes, equityRatio.id), {
+        showChange: true,
+        showMeta: true,
+      }),
+    ).toMatchInlineSnapshot(`
+      "└── Eigenkapitalquote [ratio] = 0.8 -> 0.9090909090909091 (changed)
+          ├── Eigenkapital [input] = 100
+          └── Bilanzsumme [sum] = 125 -> 110 (changed)
+              ├── Eigenkapital [input] = 100
+              └── Fremdkapital [input] = 25 -> 10 (changed)"
+    `);
+  });
 });

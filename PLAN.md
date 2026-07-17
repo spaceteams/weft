@@ -322,6 +322,49 @@ Weft MAY ship convenience layers for common patterns:
 
 These would be optional, application-level packages — not core dependencies.
 
+### Phase 6: Developer Experience & Examples Polish
+
+#### 6a. `compileModelOrThrow` public helper ✅
+The `compileOrFail` pattern was duplicated across 4+ example/test files. Added a public utility `compileModelOrThrow(model) → CompiledModel` that throws on compile errors, exported from `@spaceteams/weft/model` and re-exported from `@spaceteams/weft`. Updated examples to use it.
+
+#### 6b. Structured value rendering in inspection trees ✅
+Values rendered with `String()` produced `[object Object]` for structured inputs. Added `formatValue()` that applies `JSON.stringify` for objects/arrays and `String()` for primitives. Updated inline snapshots.
+
+#### 6c. Freeze/hydrate end-to-end example ✅
+Added `examples/src/freeze-hydrate.test.ts` demonstrating the full server→client flow: `compileModel` → `evaluateDraft` → `freezeModel` + `freezeEvaluatedDraft` → JSON wire → `analyzeFrozenDraft` → `hydrateModel` + `inspectTraceTarget`.
+
+#### 6d. `numericRules` / `algebraicRules` introduction example ✅
+Added `examples/src/shorthand-rules.test.ts` comparing raw factory calls (`sum(defaultNumberOps, ...)`) vs the `numericRules` shorthand (`n.sum(...)`) and showing how `algebraicRules(customOps)` works for custom algebras.
+
+#### 6e. Consolidate overlapping examples ✅
+Refocused `finance.test.ts` as the draft analysis showcase: removed display-hints layer (already covered in its own example), added structured tests for `evaluateOverlay` origins, `impact`, `groupedDiffs`, and `changes`.
+
+#### 6f. Update examples README ✅
+Updated `examples/README.md` with a 4-section guided reading order (Core Concepts → What-If Analysis → Validation & Schemas → Layers) covering all 13 example files. Updated root `README.md` examples table.
+
+### Phase 7: Architectural Improvements
+
+#### 7a. Deduplicate barrel exports ✅
+`src/index.ts` and `src/rules.ts` both maintained identical lists of `export * from "./rule/..."` lines. Replaced the 30-line rule export block in `src/index.ts` with `export * from "./rules"`. `src/rules.ts` is now the single source of truth for rule exports.
+
+#### 7b. Shared `Operand` resolution helper ✅
+Extracted `operandDeps(operands[])` and `operandDep(operand)` helpers to `src/rule/operand.ts`. Refactored `product.ts`, `min-max.ts`, `difference.ts`, `financial.ts`, and `clamp.ts` to use them, eliminating duplicated `deps.filter(d => d.__kind === "key")` and `if (x.__kind === "key") deps.push(x)` patterns.
+
+#### 7c. Error boundary in evaluation
+If a single rule's `eval()` throws (e.g. division by zero), the entire evaluation aborts. Add per-key error capture: `EvaluationResult.errors: Map<KeyId, Error>`. Downstream rules that depend on errored keys propagate the error. Trace steps mark errored rules. Mirrors spreadsheet `#DIV/0!` behavior — one bad cell doesn't kill the sheet.
+
+#### 7d. Rule spec discriminated union
+Rule specs are typed as `Record<string, unknown>` at the structural level. Each factory defines its own spec type (`SumSpec`, `RatioSpec`, etc.) but they're never gathered into a discriminated union. Layer evaluators and inspection dispatch on `spec.op` with zero type narrowing. Introduce `type RuleSpec = SumSpec | RatioSpec | ...` (possibly open-ended via module augmentation) to give exhaustive switch checking.
+
+#### 7e. Layer annotation type safety
+`m.annotate(key, "units", value)` accepts `unknown` — wrong types or swapped layer names are not caught. Change the API to `m.annotate(key, layerEvaluator, value)` where the second argument is the layer instance, enabling TypeScript to infer and check the value type.
+
+#### 7f. Inspection builder consolidation
+`inspectModelTarget`, `inspectTraceTarget`, `inspectDiffTarget` each independently reimplement the dep-walking, label-resolving, kind-resolving tree construction. Only the decoration (values, deltas, layers) differs. Extract a shared tree builder with a "decoration strategy" to reduce the maintenance surface.
+
+#### 7g. Canonicalization validation fence
+`freezeEvaluatedDraft` canonicalizes all values, but there's no check that values are canonicalizable. `Date`, `Set`, `Map`, `RegExp`, or circular references either silently lose data or throw deep in the freeze path. Add an `assertCanonicalizable` check with a clear error identifying the offending key.
+
 ## Open Questions
 
 - **Layer evaluation errors**: If a layer's `eval` throws (e.g., incompatible units in a sum), should this be a hard error or a diagnostic collected alongside the result? Leaning toward diagnostic — don't block computation for a layer failure.

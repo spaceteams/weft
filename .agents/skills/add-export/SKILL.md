@@ -48,7 +48,9 @@ Keep exports alphabetically sorted.
 
 ### 3. Export from `src/index.ts`
 
-Add a re-export in the appropriate section of `src/index.ts`:
+For **rules** (`src/rule/` directory): only add the export to `src/rules.ts`. The main `src/index.ts` re-exports all rules via `export * from "./rules"` — do NOT add individual rule exports to `src/index.ts`.
+
+For **other modules**: add a re-export in the appropriate section of `src/index.ts`:
 ```ts
 export * from "./<path-to-new-file>";
 ```

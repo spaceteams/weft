@@ -1,4 +1,4 @@
-import type { AnyKey, Key } from "../key";
+import type { Key } from "../key";
 import type {
   Additive,
   Divisible,
@@ -7,7 +7,7 @@ import type {
   Scalable,
 } from "../semantics/algebra";
 import { type Rule, rule } from ".";
-import { type Operand, resolveOperand } from "./operand";
+import { type Operand, operandDep, resolveOperand } from "./operand";
 
 /**
  * The combined algebra traits required by financial rule factories.
@@ -48,11 +48,7 @@ export function futureValue<T>(
     pmt: pmt as Operand<unknown>,
     pv: pv as Operand<unknown>,
   };
-  const deps: AnyKey[] = [];
-  if (rate.__kind === "key") deps.push(rate);
-  if (nper.__kind === "key") deps.push(nper);
-  if (pmt.__kind === "key") deps.push(pmt);
-  if (pv.__kind === "key") deps.push(pv);
+  const deps = [...operandDep(rate), ...operandDep(nper), ...operandDep(pmt), ...operandDep(pv)];
   return rule({
     target,
     spec,
@@ -109,11 +105,7 @@ export function presentValue<T>(
     pmt: pmt as Operand<unknown>,
     fv: fv as Operand<unknown>,
   };
-  const deps: AnyKey[] = [];
-  if (rate.__kind === "key") deps.push(rate);
-  if (nper.__kind === "key") deps.push(nper);
-  if (pmt.__kind === "key") deps.push(pmt);
-  if (fv.__kind === "key") deps.push(fv);
+  const deps = [...operandDep(rate), ...operandDep(nper), ...operandDep(pmt), ...operandDep(fv)];
   return rule({
     target,
     spec,
@@ -167,10 +159,7 @@ export function annuityPayment<T>(
     nper: nper as Operand<unknown>,
     pv: pv as Operand<unknown>,
   };
-  const deps: AnyKey[] = [];
-  if (rate.__kind === "key") deps.push(rate);
-  if (nper.__kind === "key") deps.push(nper);
-  if (pv.__kind === "key") deps.push(pv);
+  const deps = [...operandDep(rate), ...operandDep(nper), ...operandDep(pv)];
   return rule({
     target,
     spec,

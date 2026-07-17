@@ -1,14 +1,6 @@
-import { compileModel, createModel, freezeModel, hydrateModel, key } from "@spaceteams/weft";
+import { compileModelOrThrow, createModel, freezeModel, hydrateModel, key } from "@spaceteams/weft";
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
-
-function compileOrFail(model: ReturnType<ReturnType<typeof createModel>["build"]>) {
-  const result = compileModel(model);
-  if (!result.ok) {
-    throw new Error(result.issues.map((i) => i.message).join(", "));
-  }
-  return result.model;
-}
 
 describe("JSON Schema type inference through freeze/hydrate", () => {
   describe("explicit jsonSchema on inputs", () => {
@@ -19,7 +11,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
         schema: v.string(),
         jsonSchema: { type: "string" },
       });
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = freezeModel(compiled);
       expect(frozen.jsonSchemas?.name.schema.type).toBe("string");
     });
@@ -31,7 +23,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
         schema: v.pipe(v.string(), v.minLength(1)),
         jsonSchema: { type: "string", minLength: 1 },
       });
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = freezeModel(compiled);
       expect(frozen.jsonSchemas?.name.schema.type).toBe("string");
       expect(frozen.jsonSchemas?.name.schema.minLength).toBe(1);
@@ -44,7 +36,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
         schema: v.picklist(["gold", "silver", "bronze"]),
         jsonSchema: { type: "string", enum: ["gold", "silver", "bronze"] },
       });
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = freezeModel(compiled);
       expect(frozen.jsonSchemas?.tier.schema.type).toBe("string");
       expect(frozen.jsonSchemas?.tier.schema.enum).toEqual(["gold", "silver", "bronze"]);
@@ -57,7 +49,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
         schema: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
         jsonSchema: { type: "number", minimum: 0, maximum: 1 },
       });
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = freezeModel(compiled);
       expect(frozen.jsonSchemas?.rate.schema.type).toBe("number");
       expect(frozen.jsonSchemas?.rate.schema.minimum).toBe(0);
@@ -71,7 +63,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
         schema: v.boolean(),
         jsonSchema: { type: "boolean" },
       });
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = freezeModel(compiled);
       expect(frozen.jsonSchemas?.active.schema.type).toBe("boolean");
     });
@@ -83,7 +75,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
         schema: v.pipe(v.number(), v.integer()),
         jsonSchema: { type: "integer" },
       });
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = freezeModel(compiled);
       expect(frozen.jsonSchemas?.count.schema.type).toBe("integer");
     });
@@ -94,7 +86,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
       m.input(category, {
         jsonSchema: { type: "string", enum: ["A", "B", "C"] },
       });
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = freezeModel(compiled);
       expect(frozen.jsonSchemas?.category.schema.type).toBe("string");
       expect(frozen.jsonSchemas?.category.schema.enum).toEqual(["A", "B", "C"]);
@@ -116,7 +108,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
       m.input(count, { jsonSchema: { type: "integer" } });
       m.input(tier, { jsonSchema: { type: "string", enum: ["gold", "silver", "bronze"] } });
 
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = freezeModel(compiled);
 
       expect(frozen.keyValueTypes).toBeDefined();
@@ -135,7 +127,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
       m.input(name, { jsonSchema: { type: "string" } });
       m.input(untyped);
 
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = freezeModel(compiled);
 
       expect(frozen.keyValueTypes?.name).toBe("string");
@@ -152,7 +144,7 @@ describe("JSON Schema type inference through freeze/hydrate", () => {
       m.input(amount, { jsonSchema: { type: "number" } });
       m.input(active, { jsonSchema: { type: "boolean" } });
 
-      const compiled = compileOrFail(m.build());
+      const compiled = compileModelOrThrow(m.build());
       const frozen = JSON.parse(JSON.stringify(freezeModel(compiled)));
       const hydrated = hydrateModel(frozen);
 

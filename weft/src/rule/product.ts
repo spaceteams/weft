@@ -1,7 +1,7 @@
-import type { AnyKey, Key } from "../key";
+import type { Key } from "../key";
 import type { OpsDescriptor, Scalable } from "../semantics/algebra";
 import { type Rule, rule } from ".";
-import { type Operand, resolveOperand } from "./operand";
+import { type Operand, operandDeps, resolveOperand } from "./operand";
 
 export type ProductSpec = {
   op: "product";
@@ -19,7 +19,7 @@ export function product<T>(
     opsDescriptor: { family: ops.family, version: ops.version },
     factors: factors as readonly Operand<unknown>[],
   };
-  const deps: AnyKey[] = factors.filter((f): f is Key<T> => f.__kind === "key");
+  const deps = operandDeps(factors);
   return rule({
     target,
     spec,
