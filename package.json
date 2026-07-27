@@ -20,7 +20,7 @@
     "bumpp": "11.1.0",
     "@changesets/cli": "2.31.1",
     "@biomejs/biome": "2.5.4",
-    "tsdown": "0.22.11",
+    "tsdown": "0.22.12",
     "typescript": "7.0.2",
     "vitest": "4.1.10",
     "turbo": "2.10.5"
