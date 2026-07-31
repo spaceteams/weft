@@ -2,3 +2,5 @@ packages:
   - weft
   - examples
   - layers/*
+allowBuilds:
+  esbuild: false
