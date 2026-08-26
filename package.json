@@ -22,7 +22,7 @@
     "@biomejs/biome": "2.5.9",
     "tsdown": "0.22.14",
     "typescript": "7.0.2",
-    "vitest": "4.1.10",
+    "vitest": "4.1.11",
     "turbo": "2.10.11"
   }
 }
