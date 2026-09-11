@@ -18,8 +18,8 @@ importers:
         specifier: 26.4.1
         version: 26.4.1
       bumpp:
-        specifier: 12.2.3
-        version: 12.2.3
+        specifier: 12.3.0
+        version: 12.3.0
       tsdown:
         specifier: 0.22.14
         version: 0.22.14(typescript@7.0.2)(unrun@0.2.32(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2))
@@ -1070,8 +1070,8 @@ packages:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
 
-  bumpp@12.2.3:
-    resolution: {integrity: sha512-VxquP72qLNmvT/Or8eSingfZpl3uz82FOn+Gc4StwcDnf+IkoKH9n70cyLIfn0TufSCr64lnGBXaHTONbRvvDA==}
+  bumpp@12.3.0:
+    resolution: {integrity: sha512-YgW09sgbIGQmAD/Jk7FEGP0tm0PeDz+Zgk+IAk+MOHhb/98pj/l3CgkxSjd7C1O99JPxTNwS+bPOTNaHuNh6lQ==}
     engines: {node: ^22.18.0 || ^24.11.0 || >=26.0.0}
     hasBin: true
 
@@ -2143,7 +2143,7 @@ snapshots:
 
   assertion-error@2.0.1: {}
 
-  bumpp@12.2.3:
+  bumpp@12.3.0:
     dependencies:
       args-tokenizer: 0.3.0
       cac: 7.0.0

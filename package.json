@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "26.4.1",
-    "bumpp": "12.2.3",
+    "bumpp": "12.3.0",
     "@changesets/cli": "3.0.1",
     "@biomejs/biome": "2.5.12",
     "tsdown": "0.22.14",
