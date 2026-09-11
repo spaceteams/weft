@@ -14,6 +14,6 @@ export default defineConfig({
     validate: "src/validate/index.ts",
   },
   dts: {
-    tsgo: true,
+    generator: "tsgo",
   },
 });
