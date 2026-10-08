@@ -132,6 +132,7 @@ Highlights:
 | [validation](./examples/src/validation.test.ts) | Schema validation, constraints, end-to-end workflow |
 | [layers-dimensional](./examples/src/layers-dimensional.test.ts) | Automatic SI unit propagation |
 | [layers-provenance](./examples/src/layers-provenance.test.ts) | Source tracking with confidence scoring |
+| [layers-read-output](./examples/src/layers-read-output.test.ts) | Writing a custom layer that reads the computed output |
 
 Run them:
 

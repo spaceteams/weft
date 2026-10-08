@@ -30,7 +30,7 @@ export function canonicalizeLayerValues(
       if (evaluator?.codec) {
         frozen[keyId] = evaluator.codec.encode(value);
       } else {
-        frozen[keyId] = canonicalize(value);
+        frozen[keyId] = canonicalize(value, `layers.${layerName}.${keyId}`);
       }
     }
     result[layerName] = frozen;

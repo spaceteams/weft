@@ -1,4 +1,13 @@
-import { compileModel, createModel, evaluate, key, rule } from "@spaceteams/weft";
+import {
+  compileModel,
+  createModel,
+  evaluate,
+  key,
+  match,
+  rule,
+  value,
+  when,
+} from "@spaceteams/weft";
 import { describe, expect, it } from "vitest";
 import { dimensionalLayer } from "./dimensional-layer";
 import type { Unit } from "./unit";
@@ -329,6 +338,40 @@ describe("dimensionalLayer", () => {
     const result = evaluate(compiled, { a: 5 });
 
     expect(result.layers.get("units")?.get("b")).toEqual(dimensionless());
+  });
+
+  // Regression: `case "match"` used to `return firstUnit(deps)`. Matched row
+  // outputs are not static deps, so `deps` holds the row predicates' sources —
+  // the comment claimed "inherit from the matched output" while the code
+  // inherited an unrelated source's unit. It now declines to propagate.
+  it("match does not propagate a unit from the predicate source", () => {
+    const income = key<number>("income");
+    const bracket = key<string>("bracket");
+
+    const m = createModel();
+    m.input(income);
+    m.layer(dimensionalLayer);
+    m.annotate(income, "units", unit("EUR"));
+    m.rule(
+      match(bracket, {
+        name: "tax-brackets",
+        rows: [{ id: "low", when: [when(income).lt(50_000)], output: value("low") }],
+        default: value("high"),
+      }),
+    );
+
+    const compiled = compileOrFail(m.build());
+    const result = evaluate(compiled, { income: 30_000 });
+
+    expect(result.values.get("bracket")).toBe("low");
+    // Sparse: the layer has no unit for the bracket, rather than the wrong
+    // one. `income`'s EUR must not leak onto a string output.
+    expect(result.layers.get("units")?.has("bracket")).toBe(false);
+  });
+
+  it("match returns undefined when given a dep carrying a unit", () => {
+    const deps = new Map([["income", unit("EUR")]]);
+    expect(dimensionalLayer.eval("match", deps, { op: "match", tableName: "t" })).toBeUndefined();
   });
 
   it("full integration: multi-step evaluation with layer inspection", () => {

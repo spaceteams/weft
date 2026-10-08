@@ -41,6 +41,7 @@ weft, follow this order:
 | 11 | [`layers-dimensional`](#11-layers-dimensional) | Automatic SI unit propagation through arithmetic rules, unit mismatch detection, and financial unit preservation |
 | 12 | [`layers-display-hints`](#12-layers-display-hints) | Non-propagating display hints (currency, percent), ASCII rendering with layer data, and freeze/hydrate round-trips |
 | 13 | [`layers-provenance`](#13-layers-provenance) | Source tracking with confidence scores, derived confidence propagation, freeze/hydrate, and draft overlay analysis |
+| 14 | [`layers-read-output`](#14-layers-read-output) | Writing a custom layer that reads the computed output, and carrying that value through freeze/hydrate |
 
 ---
 
@@ -205,6 +206,21 @@ The `@spaceteams/weft-layer-provenance` package tracks data lineage:
 - Derived values automatically get `source: "derived"` with min-confidence propagation
 - Survives `freezeModel()` and `freezeEvaluatedDraft()` round-trips
 - Works through `analyzeDraft` overlay analysis
+
+### 14. layers-read-output
+
+**File:** [`src/layers-read-output.test.ts`](src/layers-read-output.test.ts)
+
+Writing a custom layer that reads the value it annotates:
+
+- `eval(op, deps, spec, output)` receives the rule's computed output
+- A currency-formatting layer renders `"$1,002.00"` from the number itself
+- `output` is typed `unknown` — `ruleByTarget` is a heterogeneous map, so the
+  evaluation loop erases each rule's output type before any layer runs; narrowing
+  is the layer's job
+- Declining outputs it cannot interpret (sparse), rather than guessing
+- Layer values derived from `output` survive `freezeEvaluatedDraft()` →
+  `hydrateModel()`, including `layerOutputs` on the trace step
 
 ---
 

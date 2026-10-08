@@ -114,10 +114,14 @@ export function evaluate(
       const op = (rule.spec.op ?? rule.spec.type) as string | undefined;
       let result: unknown;
       if (op) {
-        result = (evaluator as LayerEvaluator<unknown>).eval(op, depLayerValues, rule.spec);
+        // `output` is passed so a layer can interpret the value it annotates.
+        // It is `unknown` here because `ruleByTarget` is a heterogeneous
+        // `Map<KeyId, Rule<unknown>>` — the rule's own output type was erased
+        // before the layer loop.
+        result = (evaluator as LayerEvaluator<unknown>).eval(op, depLayerValues, rule.spec, output);
       }
       if (result === undefined && evaluator.default) {
-        result = evaluator.default(depLayerValues);
+        result = evaluator.default(depLayerValues, output);
       }
       if (result !== undefined) {
         layerMap.set(target, result);

@@ -1,277 +1,115 @@
 # AGENTS.md — @spaceteams/weft
 
-## Project Overview
+**weft** is a typed computation model library for overlay-based what-if analysis. You define a
+graph of inputs and computed rules, then ask "what if we changed X?" via overlays. Models
+compile and evaluate on the server, freeze into JSON-safe artifacts, and hydrate on the client
+for analysis without round-trips.
 
-**weft** is a typed computation model library for overlay-based what-if analysis. It lets you define a graph of inputs and computed rules, then explore "what if we changed X?" scenarios via overlays. The library is designed for a server/client split: models are compiled and evaluated on the server, then frozen into JSON-safe artifacts that clients can hydrate and analyze without round-trips.
+Pipeline: keys/values/inputs → rules → `compileModel` → `evaluate` (+ layers) → overlays →
+drafts → freeze → hydrate → inspect.
 
-Published as `@spaceteams/weft` on npm.
+**Read before working:** `weft/README.md` (concepts, layers, validation),
+`docs/rule-factories.md` (every factory and its spec op), `docs/validation-guide.md`,
+`PLAN.md` (open work and open questions).
 
-## Repository Structure
+Skills in `.agents/skills/` encode the repetitive change recipes — `add-export`,
+`frozen-artifact-migration`, `extend-evaluation-pipeline`, `extend-inspection-node`,
+`write-weft-tests`, `lint-fix`, `validate`.
 
-This is a **pnpm monorepo** managed by Turborepo:
+## Layers
 
-```
-weft/                     ← repo root
-├── weft/                 ← main library package (@spaceteams/weft)
-│   ├── src/
-│   │   ├── index.ts          ← main entry (re-exports everything)
-│   │   ├── core.ts           ← subpath: keys, values, inputs, facts, semantics
-│   │   ├── rules.ts          ← subpath: rule definitions and factories
-│   │   ├── model/            ← model building, compilation, graphs, freeze/hydrate
-│   │   ├── evaluate/         ← pure evaluation engine
-│   │   ├── overlay/          ← overlay evaluation, diffing, grouping, explanation
-│   │   ├── draft/            ← draft lifecycle, analysis, freeze/parse/migrate
-│   │   ├── inspect/          ← inspection trees and ASCII rendering
-│   │   ├── snapshot/         ← canonical serialization and fingerprinting
-│   │   └── semantics/        ← algebra, codec, formatter types
-│   ├── dist/                 ← build output (tsdown)
-│   ├── tsdown.config.ts
-│   ├── tsconfig.json
-│   └── package.json
-├── examples/             ← integration tests using the published API
-│   └── src/*.test.ts
-├── biome.json            ← linter + formatter config
-├── turbo.json            ← task pipeline
-├── pnpm-workspace.yaml
-└── package.json          ← root scripts
-```
+Layers are parallel evaluation tracks that run alongside value computation. A layer reads a
+rule's `spec.op`, its dependencies' layer values, and the rule's computed `output`, then
+produces its own value for the target — or `undefined`, meaning "no value here" (sparse).
+Register with `m.layer(evaluator)`; seed an input's value with `m.annotate(key, name, value)`.
+Dispatch happens inside `evaluate`, after `rule.eval(get)`, and lands on the trace step as
+`layerInputs` / `layerOutputs`.
 
-## Commands
+Three things that are not readable off `src/layer.ts`:
 
-All commands run from the **repo root** (`weft/`):
+- **`output` is `unknown` deliberately.** `CompiledModel.ruleByTarget` is a heterogeneous
+  `ReadonlyMap<KeyId, Rule<unknown>>`, so the dispatch erased each rule's output type before
+  any layer runs. Narrowing is the layer's job. The parameter is optional only so direct
+  `layer.eval(op, deps, spec)` calls keep compiling.
+- **`version` is load-bearing.** Every layer declares one and it is written into
+  `FrozenModel.layers[].version`, so a frozen artifact records which behaviour produced its
+  values. Bump it on any propagation semantics change.
+- **Layers are independent**, evaluated in registration order. A layer cannot read another
+  layer's values (see PLAN.md Open Questions).
 
-| Task | Command | Notes |
-|------|---------|-------|
-| Build all | `pnpm build` | Runs turbo → tsdown |
-| Typecheck all | `pnpm typecheck` | `tsc --noEmit` in each package |
-| Test all | `pnpm test` | `vitest run` in each package |
-| Lint | `pnpm lint` | Biome check |
-| Lint fix | `pnpm lint:fix` | Biome auto-fix |
-| Format | `pnpm format` | Biome format |
-| Full CI check | `pnpm check` | test + lint + format:check + typecheck + build |
+Shipped layers are separate workspace packages under `layers/`, not subpath exports. They
+`import type` from the weft barrel, so their published bundles have no runtime dependency on
+weft. Keep it that way.
 
-For the **library package only** (from `weft/weft/`):
+## Traps
 
-| Task | Command |
-|------|---------|
-| Build | `pnpm run build` |
-| Typecheck | `pnpm run typecheck` |
-| Test | `pnpm run test` |
-| Test (watch) | `pnpm run test:watch` |
-| Lint | `pnpm run lint` |
-| Format | `pnpm run format` |
+Each of these is invisible in the code and has cost debugging time.
 
-## Toolchain
+- **Writing an optional key unconditionally into a trace detail breaks freezing.**
+  `Object.entries` includes own keys whose value is `undefined`, and `canonicalize` rejects
+  `undefined`. `match()` used to write `matchedRowLabel: row.label` unconditionally, which made
+  every `switchOn` model unfreezable. Use `...(x !== undefined ? { x } : {})` for any optional
+  detail field — and note `toEqual` will not catch it, since it ignores undefined-valued keys.
+- **The root barrel is Node-only.** `src/index.ts` re-exports `fingerprint.ts`, which imports
+  `node:crypto` at module scope. Every subpath except `.` and `./snapshot` is crypto-free and
+  browser/edge safe.
+- **`migrateFrozenArtifact` does not validate; `parseFrozenArtifact` does.** Migration only
+  inspects the `version` field. Always parse with the latter, or call
+  `validateFrozenArtifact` explicitly.
+- **Match row outputs are not static deps.** A dep-walker — including a layer — cannot see
+  which row matched. This is why `dimensionalLayer`'s `match` op declines to propagate a unit.
+- **`match()` with no matching row and no `default` throws in lenient mode too.** Lenient
+  handles missing inputs and missing deps, not a failure inside a rule body.
 
-- **Package manager**: pnpm 10
-- **Bundler**: tsdown (rolldown-based, ESM output)
-- **TypeScript**: 5.9 with `strict`, `verbatimModuleSyntax`, `noUnusedLocals`
-- **Test runner**: Vitest 4
-- **Linter/Formatter**: Biome 2.4
-- **Monorepo orchestration**: Turborepo
+## Design decisions
 
-## Code Style
+1. **`ModelStructure` is structurally typed** — `CompiledModel` satisfies it implicitly, so any
+   new field on `ModelStructure` must be optional. The same field may be required on
+   `CompiledModel`.
+2. **Canonicalization is mandatory for frozen data** — everything in `FrozenModel` and
+   `FrozenEvaluatedDraft` must be `CanonicalJson`. Canonicalization sorts keys, which is what
+   makes fingerprints deterministic.
+3. **No live functions cross the freeze boundary** — `Rule.eval`, `KeySemantics`, and
+   `Resolver` never appear in frozen types. This is also why behaviour identity cannot come
+   from `fn.toString()`; it must come from a declared `spec` or layer `version` string.
+4. **Generic delta types preserve caller precision** — `explainDiffs<D>` and
+   `groupDiffByOrigin<D>` return `Change<D>[]` / `DiffGroup<D>[]`, so a caller passing
+   `CanonicalDelta[]` gets canonical types back.
+5. **`normalizeDraft` is server-only** — it needs `CompiledModel` for semantics. The server
+   normalizes before freezing, so clients skip it.
+6. **Fingerprinting is Node-only and currently unusable for drift detection** — nothing in the
+   library reads any fingerprint field, and `snapshotModel` (its only model input) covers only
+   `inputKeys` and per-rule `target` + `spec`, not `keyMeta`, dependency topology, or layers.
+   See PLAN.md 8a.
+7. **`keyValueTypes` is derived, not declared** — `freezeModel` infers it from the JSON Schema
+   `type`; keys without schemas get `"unknown"`.
+8. **Structural validation lives in `draft/freeze/`, value validation in `validate/`** —
+   `validateFrozenArtifact` checks the envelope and canonicalizability; `validateFrozenDraft`
+   checks values against schemas and needs a consumer-supplied `JsonSchemaValidator`.
 
-- 2-space indent, double quotes, trailing commas, semicolons, LF line endings
-- Max line width: 100
-- Use `import type` for type-only imports (`"useImportType": "error"`)
-- Use `node:` protocol for Node.js builtins (`"useNodejsImportProtocol": "error"`)
-- No unused variables/imports (errors)
-- `noNonNullAssertion` is allowed (off)
-- Tests may use `any` without warning
+## Recipes not covered by a skill
 
-## Architecture & Key Concepts
+- **New rule factory** — add `src/rule/<name>.ts`, export it from `src/rules.ts` (the single
+  source of truth for rule exports), and add an integration test in `examples/src/`.
+- **New `ModelStructure` / `FrozenModel` field** — optional on `ModelStructure`, build it in
+  `compileModel`, add it to the `FrozenModel` type plus `freezeModel`/`hydrateModel`, and
+  canonicalize if it holds arbitrary data.
+- **New layer** — `LayerEvaluator<T>` with `name` + `version`, register with `m.layer`, test in
+  `examples/src/`, link from `examples/README.md`.
+- **JSON Schema for a key** — auto-extracted from a Standard Schema V1 library's
+  `~standard.jsonSchema`; otherwise set `jsonSchema` on `InputOptions`/`RuleOptions`, which also
+  works metadata-only. Valibot does not implement the extension.
 
-### API Layers (bottom to top)
+Conventions: kebab-case files, PascalCase types, `export type` at declaration site, co-located
+tests. The library is side-effect-free apart from `node:crypto`.
 
-```
-Core       → Keys, Values, Inputs, Facts, Semantics
-Rules      → Sum, Ratio, Scale, WeightedSum, Projection, Decision
-Model      → createModel → compileModel → CompiledModel
-Evaluate   → evaluate(model, facts) → EvaluationResult
-Overlay    → evaluateOverlay, diffResults, groupDiffByOrigin, explainDiffs
-Draft      → createDraft → normalizeDraft → evaluateDraft → analyzeDraft
-Inspect    → inspectModelTarget, inspectTraceTarget, inspectDiffTarget
-Snapshot   → canonicalize, fingerprint
-```
+<!-- BEGIN:turborepo-agent-rules -->
 
-### Core Types
+# This is NOT the Turborepo you know
 
-| Type | Purpose |
-|------|---------||
-| `Key<T>` | Typed identifier for a value in the model |
-| `KeyId` | String alias (`Key<T>.id`) |
-| `FactBag` | `Record<KeyId, unknown>` — input values |
-| `Overlay` | `Record<KeyId, unknown>` — proposed overrides |
-| `Input<T>` | Declaration of an input key |
-| `Rule<T>` | Computation node: target + deps + eval function + spec |
-| `Model` | Uncompiled model (inputs + rules + semantics + metadata) |
-| `CompiledModel` | Validated model with dependency graph, topological order, `ruleSpecs` |
-| `ModelStructure` | Structural subset of `CompiledModel` (no live rule fns); satisfied by both `CompiledModel` and hydrated frozen models |
-| `KeyMeta` | Per-key metadata: `label`, `description`, `group`, `unit`, `order`, `semanticType` |
-| `SemanticType` | Presentation hint: `"percent"` \| `"currency"` \| `"date"` \| `"duration"` \| `"email"` \| `"url"` |
-| `KeyValueType` | Simple type tag: `"number"` \| `"integer"` \| `"string"` \| `"boolean"` \| `"object"` \| `"array"` \| `"unknown"` |
+Turborepo configuration, task behavior, and CLI commands can vary between installed versions and may differ from your training data. Resolve the `turbo` package from this file's directory or relevant workspace; in monorepos, it may not be visible from the repository root. For example, run `node -p "require.resolve('turbo/package.json')"` from a workspace that depends on `turbo`.
 
-### Evaluation & Overlay
+Read `docs/README.md` inside that installed package first, then read the relevant pages from its `docs/` directory before changing Turborepo configuration or commands. Heed deprecation notices. These bundled docs match the installed package version and are available without network access.
 
-| Type | Purpose |
-|------|---------|
-| `EvaluationResult` | `{ values, missing, order, trace }` |
-| `TraceStep` | Per-rule trace: target, deps, inputs, output, ruleSpec, detail |
-| `OverlayEvaluationResult` | Evaluation + `overlayedFacts` + `origins` |
-| `ValueOrigin` | `"base"` / `"overlay"` / `"derived"` |
-| `OriginMap` | `Map<KeyId, ValueOrigin>` |
-| `ValueDelta` | Discriminated union: added / removed / changed |
-
-### Draft Lifecycle
-
-```
-createDraft(id, base, overlay)         → Draft
-normalizeDraft(model, draft)           → NormalizedDraft + issues
-evaluateDraft(model, draft, mode)      → EvaluatedDraft
-analyzeImpact(model, origins, deltas)  → ImpactAnalysis
-analyzeDraft(model, draft, mode)       → DraftAnalysis (full)
-```
-
-### Freeze / Hydrate (Server → Client)
-
-**Server-side freeze:**
-```
-freezeModel(compiledModel)                → FrozenModel (JSON-safe)
-freezeEvaluatedDraft(model, evaluated)    → FrozenEvaluatedDraft (JSON-safe)
-```
-
-**Client-side hydrate & analyze:**
-```
-hydrateModel(frozenModel)                 → ModelStructure
-analyzeFrozenDraft(frozenModel, frozenDraft) → ClientDraftAnalysis
-```
-
-The convenience function `analyzeFrozenDraft` chains:
-`hydrateModel` → `deriveOrigins` → `analyzeImpact` + `groupDiffByOrigin` + `explainDiffs`
-
-### Canonical Serialization
-
-| Type | Purpose |
-|------|---------|
-| `CanonicalJson` | `null \| boolean \| number \| string \| CanonicalJson[] \| Record<string, CanonicalJson>` |
-| `CanonicalDelta` | `ValueDelta` with `CanonicalJson` values (structurally assignable to `ValueDelta`) |
-| `CanonicalTraceStep` | `TraceStep` with `CanonicalJson` values (structurally assignable to `TraceStep`) |
-
-Canonicalization sorts object keys and normalizes values for deterministic fingerprinting.
-
-### Frozen Artifact Types
-
-| Type | Contents |
-|------|----------|
-| `FrozenModel` | `inputKeys`, `orderedRuleTargets`, `depsByTarget`, `dependentsByKey`, `keyMeta`, `ruleMeta`, `ruleSpecs`, `jsonSchemas?`, `keyValueTypes?`, `constraints?` (all as Records, canonicalized) |
-| `FrozenEvaluatedDraft` | `version`, `draftId`, `snapshot`, `base`, `overlay`, `effective`, `values`, `deltas`, `trace`, `frozenAt` |
-| `FrozenSnapshot` | Fingerprints: `modelFingerprint`, `baseFingerprint`, `overlayFingerprint`, `analysisFingerprint`, `createdAt` |
-| `ClientDraftAnalysis` | `impact`, `groupedDiffs`, `changes`, `values` — derived client-side from frozen artifacts |
-
-### Frozen Artifact Versioning & Migration
-
-Frozen artifacts carry a `version` field (current: `CURRENT_FROZEN_VERSION = 1`). The `parseFrozenArtifact(json)` function auto-migrates from any older version. Migrations live in `draft/freeze/migrations/`.
-
-### Inspection
-
-Three inspection entry points build `InspectionNode` trees:
-- `inspectModelTarget(model, target)` — static dependency structure (accepts `ModelStructure`)
-- `inspectTraceTarget(model, trace, target)` — runtime values from evaluation trace
-- `inspectDiffTarget(model, result, changes, target)` — values + change annotations
-
-All accept `ModelStructure` (works with both live and hydrated frozen models). Render with `inspectionNodeToAscii(node, { showMeta, showChange })`.
-
-### Type Compatibility: Canonical ↔ Live
-
-Analysis functions use generic/widened signatures so frozen canonical data flows in without casts:
-
-- `analyzeImpact` accepts `readonly { readonly key: KeyId }[]` — works with both `ValueDelta[]` and `CanonicalDelta[]`
-- `explainDiffs<D>` and `groupDiffByOrigin<D>` are generic over delta type (constraint: `{ readonly key: KeyId }`)
-- `explainDiffs` accepts `{ trace: readonly TraceStep[] }` — `CanonicalTraceStep[]` is structurally assignable
-- `Change<D>` and `DiffGroup<D>` are generic with default `ValueDelta`
-
-## Entry Points (package.json exports)
-
-| Import path | Entry | Description |
-|-------------|-------|-------------|
-| `@spaceteams/weft` | `src/index.ts` | Everything |
-| `@spaceteams/weft/core` | `src/core.ts` | Keys, values, inputs, facts, semantics |
-| `@spaceteams/weft/rules` | `src/rules.ts` | Rule definitions and factories |
-| `@spaceteams/weft/model` | `src/model/index.ts` | Model, compile, graph, freeze/hydrate |
-| `@spaceteams/weft/evaluate` | `src/evaluate/index.ts` | Evaluation engine |
-| `@spaceteams/weft/overlay` | `src/overlay/index.ts` | Overlay evaluation and diffing |
-| `@spaceteams/weft/draft` | `src/draft/index.ts` | Draft lifecycle and analysis |
-| `@spaceteams/weft/inspect` | `src/inspect/index.ts` | Inspection trees and ASCII |
-| `@spaceteams/weft/snapshot` | `src/snapshot/index.ts` | Canonicalization and fingerprinting |
-
-## File Conventions
-
-- **Barrel files**: Each directory has an `index.ts` that re-exports its public API.
-- **Test files**: Co-located as `*.test.ts` next to source (in `src/`) or in `examples/src/`.
-- **Types**: Prefer `export type` at declaration site. Co-locate types with their implementation.
-- **Pure functions**: The library is side-effect-free. No global state, no I/O (except `node:crypto` for fingerprinting).
-- **Naming**: Files use kebab-case. Types use PascalCase. Functions use camelCase.
-
-## Testing Patterns
-
-- Tests use Vitest with `toMatchInlineSnapshot` for ASCII inspection trees
-- Integration tests in `examples/` use the published `@spaceteams/weft` import (validates the public API surface)
-- Frozen artifact round-trip tests verify `freeze → JSON.stringify → JSON.parse → parse/migrate → inspect` produces identical output to live paths
-- Test fixtures for migration live in `draft/freeze/__fixtures__/`
-
-## Common Patterns When Making Changes
-
-### Adding a new rule type
-1. Create `src/rule/<name>.ts` with spec type + factory function
-2. Export from `src/rule/index.ts` (barrel) — no, rule barrel is just `src/rules.ts`
-3. Add `export * from "./rule/<name>"` in `src/rules.ts`
-4. The main `src/index.ts` already re-exports `src/rules.ts` content
-5. Add integration test in `examples/src/`
-
-### Widening a function to accept `ModelStructure`
-Replace `CompiledModel` parameter with `ModelStructure` import from `../model/model-structure`. Since `CompiledModel` structurally satisfies `ModelStructure`, existing callers are unaffected.
-
-### Adding fields to frozen artifacts
-1. Increment `CURRENT_FROZEN_VERSION` in `draft/freeze/version.ts`
-2. Add migration in `draft/freeze/migrations/v<old>-to-v<new>.ts`
-3. Register in `draft/freeze/migrate.ts`
-4. Update `FrozenEvaluatedDraft` type and `freezeEvaluatedDraft` function
-5. Add fixture and test in `draft/freeze/freeze-migration.test.ts`
-
-### Adding to `ModelStructure` / `FrozenModel`
-1. Add optional field to `ModelStructure` (keeps structural compat with `CompiledModel`)
-2. Add required field to `CompiledModel` in `model/index.ts`
-3. Build it in `compileModel` (`model/compile-model.ts`)
-4. Add to `FrozenModel` type, `freezeModel`, and `hydrateModel` in `model/freeze-model.ts`
-5. Canonicalize if the field contains arbitrary data
-
-### Adding JSON Schema metadata for a key
-Two paths, tried in order during `freezeModel`:
-1. **Auto-extraction**: If the schema library exposes `~standard.jsonSchema` (e.g. Zod 3.24+), it's extracted automatically.
-2. **Explicit fallback**: Provide `jsonSchema: { type: "number", ... }` in `InputOptions` or `RuleOptions`. Stored in `model.explicitJsonSchemas` and used when auto-extraction fails.
-
-The explicit path also supports metadata-only use (no validation schema required):
-```ts
-m.input(category, {
-  jsonSchema: { type: "string", enum: ["A", "B", "C"] },
-});
-```
-
-## Important Design Decisions
-
-1. **`ModelStructure` is structurally typed** — `CompiledModel` satisfies it implicitly. Any new field added to `ModelStructure` should be optional (to maintain this), while the same field on `CompiledModel` can be required.
-
-2. **Canonicalization is mandatory for frozen data** — All values in `FrozenModel` and `FrozenEvaluatedDraft` must be `CanonicalJson` (sorted keys, normalized values). This ensures deterministic fingerprints.
-
-3. **No live functions cross the freeze boundary** — `Rule.eval`, `KeySemantics.eq/encode/decode`, and `Resolver` never appear in frozen types. Frozen data is pure data.
-
-4. **Generic delta types preserve caller precision** — `explainDiffs<D>` and `groupDiffByOrigin<D>` return `Change<D>[]` / `DiffGroup<D>[]`, so callers passing `CanonicalDelta[]` get canonical types back in the output.
-
-5. **`normalizeDraft` is server-only** — It requires `CompiledModel` (needs semantics for equality checks). Client-side analysis skips normalization (the server normalizes before freezing).
-
-6. **Fingerprinting uses SHA-256** — `fingerprintValue` canonicalizes then hashes with `node:crypto`. This makes it server/Node.js-only; clients use pre-computed fingerprints from `FrozenSnapshot`.
-
-7. **Explicit JSON Schema as fallback** — The `~standard.jsonSchema` auto-extraction only works with schema libraries that implement the StandardJSONSchemaV1 extension (e.g. Zod 3.24+). Valibot 1.4.0 does NOT support it. The `jsonSchema` option on `InputOptions`/`RuleOptions` provides a universal fallback for JSON Schema metadata regardless of schema library.
-
-8. **`keyValueTypes` is derived, not declared** — Rather than requiring model authors to redundantly declare value types alongside schemas, `freezeModel` automatically derives `keyValueTypes` from the JSON Schema `type` field. Keys without schemas get `"unknown"`.
+This block is written and re-added by `turbo` before repository-scoped commands when an AI agent is detected. In the Turborepo source repository, its template is defined in `crates/turborepo-cli/src/cli/agent_guidance.rs`. Removing the managed block while updates are enabled means a later qualifying invocation will add it again. Set `"agentGuidance": false` in the root `turbo.json` or `turbo.jsonc` to opt out; this does not remove an existing block. Keep the block committed with your work to avoid an uncommitted change on the next agent invocation.
+<!-- END:turborepo-agent-rules -->

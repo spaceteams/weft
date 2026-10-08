@@ -91,11 +91,11 @@ export function freezeEvaluatedDraft(
     draftId: draft.draftId,
     snapshot,
 
-    base: canonicalizeFacts(model, draft.base),
-    overlay: canonicalizeFacts(model, draft.overlay),
-    effective: canonicalizeFacts(model, evaluated.result.overlayedFacts.effective),
+    base: canonicalizeFacts(model, draft.base, "base"),
+    overlay: canonicalizeFacts(model, draft.overlay, "overlay"),
+    effective: canonicalizeFacts(model, evaluated.result.overlayedFacts.effective, "effective"),
 
-    values: canonicalizeFacts(model, mapToFactBag(evaluated.result.values)),
+    values: canonicalizeFacts(model, mapToFactBag(evaluated.result.values), "values"),
 
     deltas: evaluated.deltas.map((delta) => canonicalizeDelta(model, delta)),
 

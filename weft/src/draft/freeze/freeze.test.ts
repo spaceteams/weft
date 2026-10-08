@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 import { compileModel, createModel, defaultNumberOps, key, ratio, sum } from "../../index";
 import { inspectTraceTarget } from "../../inspect/inspect-trace-target";
 import { inspectionNodeToAscii } from "../../inspect/inspection-node-to-ascii";
+import type { Key } from "../../key";
+import type { Rule } from "../../rule";
+import { match, switchOn, when } from "../../rule/decision-dsl";
+import { value } from "../../value";
 import { evaluateDraft } from "../evaluate-draft";
 import { freezeEvaluatedDraft } from "./freeze-evaluated-draft";
+import { parseFrozenArtifact } from "./parse";
 import { CURRENT_FROZEN_VERSION } from "./version";
 
 // ---------------------------------------------------------------------------
@@ -142,5 +147,122 @@ describe("inspectTraceTarget: live vs frozen", () => {
 
     const opts = { showMeta: true, showChange: true } as const;
     expect(inspectionNodeToAscii(frozenTree, opts)).toBe(inspectionNodeToAscii(liveTree, opts));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Label-less decision rows must freeze
+//
+// Regression: match() wrote `matchedRowLabel: row.label` unconditionally, so a
+// row without a label produced an own property whose value was `undefined`.
+// canonicalizeTraceStep iterates Object.entries(detail) — which includes
+// undefined-valued keys — and canonicalize() rejects undefined, so freezing
+// threw. switchOn() builds rows that never carry a label, which made every
+// switchOn model unfreezable.
+// ---------------------------------------------------------------------------
+
+describe("freeze: label-less decision rows", () => {
+  function freezeWith(
+    inputKey: Key<unknown>,
+    theRule: Rule<unknown>,
+    facts: Record<string, unknown>,
+  ) {
+    const mb = createModel();
+    mb.input(inputKey);
+    mb.rule(theRule);
+    const c = compileModel(mb.build());
+    if (!c.ok) throw new Error(c.issues.map((i) => i.message).join());
+    const evaluated = evaluateDraft(c.model, { draftId: "d", base: facts, overlay: {} }, "lenient");
+    return freezeEvaluatedDraft(c.model, evaluated);
+  }
+
+  const income = key<number>("income");
+  const bracket = key<string>("bracket");
+
+  it("freezes a match whose matched row has no label", () => {
+    const frozen = freezeWith(
+      income,
+      match(bracket, {
+        name: "unlabelled",
+        rows: [{ id: "low", when: [when(income).lt(10_000)], output: value("low") }],
+        default: value("high"),
+      }),
+      { income: 5_000 },
+    );
+
+    expect(frozen.values.bracket).toBe("low");
+    const step = frozen.trace.find((t) => t.target === "bracket");
+    expect(step?.detail).toEqual({
+      op: "match",
+      tableName: "unlabelled",
+      matchedRowId: "low",
+      usedDefault: false,
+    });
+  });
+
+  it("freezes a switchOn (record-style cases)", () => {
+    const category = key<string>("category");
+    const price = key<number>("price");
+
+    const frozen = freezeWith(
+      category,
+      switchOn(category, price, {
+        name: "category-pricing",
+        cases: { standard: value(100), premium: value(250) },
+        default: value(50),
+      }),
+      { category: "premium" },
+    );
+
+    expect(frozen.values.price).toBe(250);
+    expect(frozen.trace.find((t) => t.target === "price")?.detail).toEqual({
+      op: "match",
+      tableName: "category-pricing",
+      matchedRowId: "premium",
+      usedDefault: false,
+    });
+  });
+
+  it("freezes a switchOn (array-style cases)", () => {
+    const category = key<string>("category");
+    const price = key<number>("price");
+
+    const frozen = freezeWith(
+      category,
+      switchOn(category, price, {
+        name: "array-pricing",
+        cases: [{ match: ["premium", "gold"], output: value(300) }],
+        default: value(50),
+      }),
+      { category: "gold" },
+    );
+
+    expect(frozen.values.price).toBe(300);
+    expect(frozen.trace.find((t) => t.target === "price")?.detail).toEqual({
+      op: "match",
+      tableName: "array-pricing",
+      matchedRowId: "case-0",
+      usedDefault: false,
+    });
+  });
+
+  it("survives a JSON round trip", () => {
+    const frozen = freezeWith(
+      income,
+      match(bracket, {
+        name: "unlabelled",
+        rows: [{ id: "low", when: [when(income).lt(10_000)], output: value("low") }],
+        default: value("high"),
+      }),
+      { income: 5_000 },
+    );
+
+    const parsed = parseFrozenArtifact(JSON.parse(JSON.stringify(frozen)));
+    expect(parsed.trace.find((t) => t.target === "bracket")?.detail).toEqual({
+      op: "match",
+      tableName: "unlabelled",
+      matchedRowId: "low",
+      usedDefault: false,
+    });
   });
 });

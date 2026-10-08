@@ -6,10 +6,16 @@ import { canonicalizeValue } from "./canonicalizeValue";
 export function canonicalizeFacts(
   model: CompiledModel,
   facts: FactBag,
+  pathPrefix?: string,
 ): Record<string, CanonicalJson> {
   const result: Record<string, CanonicalJson> = {};
   for (const [key, value] of Object.entries(facts)) {
-    result[key] = canonicalizeValue(model, key, value);
+    result[key] = canonicalizeValue(
+      model,
+      key,
+      value,
+      pathPrefix === undefined ? key : `${pathPrefix}.${key}`,
+    );
   }
   return result;
 }
