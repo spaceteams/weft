@@ -210,11 +210,36 @@ import type { LayerEvaluator } from "@spaceteams/weft";
 type LayerEvaluator<T> = {
   name: string;             // unique identifier
   version: string;          // for frozen artifact compatibility
-  eval(op, deps, spec): T | undefined;  // propagation logic
-  default?(deps): T | undefined;        // fallback for unknown ops
+  // propagation logic — `output` is the value the rule computed
+  eval(op, deps, spec, output): T | undefined;
+  default?(deps, output): T | undefined;      // fallback for unknown ops
   codec?: Codec<T>;         // serialization for freeze/hydrate
 };
 ```
+
+`output` lets a layer interpret the value it annotates, which a policy layer often needs:
+
+```ts
+const moneyLayer: LayerEvaluator<string> = {
+  name: "money",
+  version: "1",
+  eval(_op, _deps, _spec, output) {
+    if (typeof output !== "number") return undefined;   // sparse: no value here
+    return output.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  },
+};
+```
+
+`output` is typed `unknown`, and that is deliberate: `CompiledModel.ruleByTarget` is a
+heterogeneous `Map<KeyId, Rule<unknown>>`, so the evaluation loop has already erased each
+rule's output type before any layer runs. Narrow it yourself, as above.
+
+Declaring fewer parameters is fine — a layer written as `eval(op, deps, spec)` or even
+`eval()` still satisfies the type, and a direct `layer.eval(op, deps, spec)` still compiles.
+
+
+Bump `version` whenever propagation semantics change. It is recorded in frozen artifacts, so
+a value bag written by one version is not comparable to one written by another.
 
 ### Registering Layers & Annotating Inputs
 
@@ -528,8 +553,49 @@ Built-in rule factories for common computation patterns:
 | Factory | Description |
 | --- | --- |
 | `conditional(target, condition, then, otherwise)` | If/then/else branching |
-| `decision(target, deps, table)` | Lookup table / decision matrix |
-| `projection(ops, target, base, years)` | Time-based projection |
+| `match(target, config)` | Predicate-based decision table built with `when()` |
+| `switchOn(source, target, config)` | Single-source equality lookup (record or array cases) |
+| `rangeSwitch(source, target, config)` | Ascending numeric range lookup |
+| `when(source)` | Predicate builder — not a rule; produces predicates for `match` |
+
+### Object & Record Helpers
+
+| Factory | Description |
+| --- | --- |
+| `projection(target, source, field)` | Extract a single field from a record-typed key |
+| `pick(target, source, fields)` | Pick a subset of fields into a new record |
+| `pluck(target, source, path)` | Extract a nested value by path (string or array of segments) |
+| `compose(target, fields)` | Build a record from key references |
+| `spread(target, sources)` | Merge multiple records into one |
+| `mapEntries(target, source, transform, extraDeps?)` | Transform every entry of a record |
+
+### String Rules
+
+| Factory | Description |
+| --- | --- |
+| `concat(target, parts, separator?)` | Join key/literal parts |
+| `template(target, pattern, deps)` | Interpolate `{{key}}` placeholders |
+| `format(target, source, formatter)` | Apply a formatter function |
+
+### Boolean Rules
+
+| Factory | Description |
+| --- | --- |
+| `logicalAnd(target, deps)` / `logicalOr(target, deps)` | And/or across boolean deps |
+| `logicalNot(target, source)` | Boolean negation |
+| `compare(target, left, right, compareOp)` | Ordering comparison (`eq`, `neq`, `lt`, `lte`, `gt`, `gte`) |
+| `coerce(target, source, fn)` | Convert a value with a function |
+
+### Ergonomic Helpers
+
+| Export | Description |
+| --- | --- |
+| `numericRules` | Shorthand bundle over `defaultNumberOps` (`n.sum(...)`) |
+| `algebraicRules(ops)` | Shorthand bundle for a custom algebra |
+
+**[`docs/rule-factories.md`](../docs/rule-factories.md) is the complete reference** — it
+documents every factory, its spec op, and its trace detail, including the algebra traits
+(`Equality`, `Order`, `Additive`, `Scalable`, `Divisible`) that gate the ops-aware factories.
 
 ### Custom Rules
 

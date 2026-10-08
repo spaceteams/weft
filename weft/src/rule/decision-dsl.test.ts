@@ -256,6 +256,31 @@ describe("match()", () => {
       usedDefault: false,
     });
   });
+
+  it("omits matchedRowLabel entirely for a row with no label", () => {
+    const r = buildAndEval(
+      [
+        match(discount, {
+          name: "unlabelled",
+          rows: [{ id: "senior", when: [when(age).gte(65)], output: value(0.2) }],
+          default: value(0),
+        }),
+      ],
+      { age: 70 },
+    );
+    const step = r.trace.find((t) => t.target === "discount");
+    expect(step?.detail).toEqual({
+      op: "match",
+      tableName: "unlabelled",
+      matchedRowId: "senior",
+      usedDefault: false,
+    });
+    // `toEqual` treats a key set to `undefined` as absent, so assert the
+    // property is genuinely not there. An own `matchedRowLabel: undefined`
+    // reaches `canonicalize()` during freeze and throws.
+    expect(step?.detail).not.toHaveProperty("matchedRowLabel");
+    expect(Object.hasOwn(step?.detail ?? {}, "matchedRowLabel")).toBe(false);
+  });
 });
 
 describe("switchOn()", () => {
@@ -310,6 +335,42 @@ describe("switchOn()", () => {
     });
 
     expect(buildAndEval([theRule], { tier: 2 }).values.get("label")).toBe("silver");
+  });
+
+  it("omits matchedRowLabel for record-style cases", () => {
+    const theRule = switchOn(category, basePrice, {
+      name: "category-pricing",
+      cases: { standard: value(100) },
+      default: value(50),
+    });
+
+    const r = buildAndEval([theRule], { category: "standard" });
+    const step = r.trace.find((t) => t.target === "base_price");
+    expect(step?.detail).toEqual({
+      op: "match",
+      tableName: "category-pricing",
+      matchedRowId: "standard",
+      usedDefault: false,
+    });
+    expect(Object.hasOwn(step?.detail ?? {}, "matchedRowLabel")).toBe(false);
+  });
+
+  it("omits matchedRowLabel for array-style cases", () => {
+    const theRule = switchOn(category, basePrice, {
+      name: "array-pricing",
+      cases: [{ match: ["premium", "gold"], output: value(300) }],
+      default: value(50),
+    });
+
+    const r = buildAndEval([theRule], { category: "gold" });
+    const step = r.trace.find((t) => t.target === "base_price");
+    expect(step?.detail).toEqual({
+      op: "match",
+      tableName: "array-pricing",
+      matchedRowId: "case-0",
+      usedDefault: false,
+    });
+    expect(Object.hasOwn(step?.detail ?? {}, "matchedRowLabel")).toBe(false);
   });
 });
 

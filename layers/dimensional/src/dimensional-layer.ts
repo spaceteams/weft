@@ -11,7 +11,10 @@ import { dimensionless, divideUnits, multiplyUnits, unitsEqual } from "./unit";
  */
 export const dimensionalLayer: LayerEvaluator<Unit> = {
   name: "units",
-  version: "1",
+  // Bumped from "1" to "2": the `match` op no longer inherits its first dep's
+  // unit (see the `match` case below). Frozen artifacts record this version, so
+  // a `units` bag written by v1 is not comparable to one written by v2.
+  version: "2",
 
   eval(
     op: string,
@@ -72,9 +75,16 @@ export const dimensionalLayer: LayerEvaluator<Unit> = {
       case "present-value":
         return financialUnit(deps, spec);
 
-      // ── Match: inherit from the matched output ───────────────────────
+      // ── Match: no unit propagation ─────────────────────────────────────
+      // A layer is not told which row matched, and matched row outputs are not
+      // static deps (see matchDependencies in weft/src/rule/decision-dsl.ts),
+      // so the deps here are the row *predicates*' sources. Inheriting the
+      // first of those would stamp an unrelated unit onto the match output —
+      // e.g. a match mapping a EUR-annotated income to a string tax bracket
+      // would label that string "EUR". Declining to propagate is the only
+      // answer available from the information a layer receives.
       case "match":
-        return firstUnit(deps);
+        return undefined;
 
       // ── Boolean / structural ops: dimensionless ──────────────────────
       case "compare":

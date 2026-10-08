@@ -351,14 +351,6 @@ conditional(bonus, isEligible, highBonus, lowBonus);
 
 ---
 
-### `decision(target, deps, table)`
-
-Decision table with predicate-based row matching. See existing documentation for full details.
-
-**Spec op:** `"decision"`
-
----
-
 ### `match(target, config)` — Typed Predicate Decision Table
 
 Decision table using the typed predicate DSL with `when()`. Supports mixed-type conditions naturally.

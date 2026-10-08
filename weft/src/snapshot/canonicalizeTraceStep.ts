@@ -23,19 +23,21 @@ export type CanonicalTraceStep = {
 };
 
 export function canonicalizeTraceStep(model: CompiledModel, step: TraceStep): CanonicalTraceStep {
+  const at = (field: string) => `trace.${step.target}.${field}`;
+
   const inputs: Record<KeyId, CanonicalJson> = {};
   for (const [depKey, value] of Object.entries(step.inputs)) {
-    inputs[depKey] = canonicalizeValue(model, depKey, value);
+    inputs[depKey] = canonicalizeValue(model, depKey, value, at(`inputs.${depKey}`));
   }
 
   const detail: Record<string, CanonicalJson> = {};
   for (const [key, value] of Object.entries(step.detail)) {
-    detail[key] = canonicalize(value);
+    detail[key] = canonicalize(value, at(`detail.${key}`));
   }
 
   const ruleSpec: Record<string, CanonicalJson> = {};
   for (const [key, value] of Object.entries(step.ruleSpec)) {
-    ruleSpec[key] = canonicalize(value);
+    ruleSpec[key] = canonicalize(value, at(`ruleSpec.${key}`));
   }
 
   return {
@@ -45,13 +47,13 @@ export function canonicalizeTraceStep(model: CompiledModel, step: TraceStep): Ca
 
     ruleSpec,
     inputs,
-    output: canonicalizeValue(model, step.target, step.output),
+    output: canonicalizeValue(model, step.target, step.output, at("output")),
     detail,
     ...(step.layerInputs && {
-      layerInputs: canonicalizeTraceLayerInputs(model, step.layerInputs),
+      layerInputs: canonicalizeTraceLayerInputs(model, step.layerInputs, at("layerInputs")),
     }),
     ...(step.layerOutputs && {
-      layerOutputs: canonicalizeTraceLayerOutputs(model, step.layerOutputs),
+      layerOutputs: canonicalizeTraceLayerOutputs(model, step.layerOutputs, at("layerOutputs")),
     }),
   };
 }
@@ -59,13 +61,16 @@ export function canonicalizeTraceStep(model: CompiledModel, step: TraceStep): Ca
 function canonicalizeTraceLayerInputs(
   model: CompiledModel,
   layerInputs: Readonly<Record<string, Record<KeyId, unknown>>>,
+  pathPrefix?: string,
 ): Record<string, Record<KeyId, CanonicalJson>> {
   const result: Record<string, Record<KeyId, CanonicalJson>> = {};
   for (const [layerName, deps] of Object.entries(layerInputs)) {
     const evaluator = model.layers.find((l) => l.name === layerName);
     const canonicalDeps: Record<KeyId, CanonicalJson> = {};
     for (const [k, v] of Object.entries(deps)) {
-      canonicalDeps[k] = evaluator?.codec ? evaluator.codec.encode(v) : canonicalize(v);
+      canonicalDeps[k] = evaluator?.codec
+        ? evaluator.codec.encode(v)
+        : canonicalize(v, join(pathPrefix, layerName, k));
     }
     result[layerName] = canonicalDeps;
   }
@@ -75,11 +80,18 @@ function canonicalizeTraceLayerInputs(
 function canonicalizeTraceLayerOutputs(
   model: CompiledModel,
   layerOutputs: Readonly<Record<string, unknown>>,
+  pathPrefix?: string,
 ): Record<string, CanonicalJson> {
   const result: Record<string, CanonicalJson> = {};
   for (const [layerName, value] of Object.entries(layerOutputs)) {
     const evaluator = model.layers.find((l) => l.name === layerName);
-    result[layerName] = evaluator?.codec ? evaluator.codec.encode(value) : canonicalize(value);
+    result[layerName] = evaluator?.codec
+      ? evaluator.codec.encode(value)
+      : canonicalize(value, join(pathPrefix, layerName));
   }
   return result;
+}
+
+function join(prefix: string | undefined, ...segments: string[]): string | undefined {
+  return prefix === undefined ? segments.join(".") : [prefix, ...segments].join(".");
 }

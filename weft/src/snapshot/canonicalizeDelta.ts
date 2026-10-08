@@ -19,20 +19,20 @@ export function canonicalizeDelta(model: CompiledModel, delta: ValueDelta): Cano
       return {
         key: delta.key,
         kind: "added",
-        after: canonicalizeValue(model, delta.key, delta.after),
+        after: canonicalizeValue(model, delta.key, delta.after, `deltas.${delta.key}.after`),
       };
     case "removed":
       return {
         key: delta.key,
         kind: "removed",
-        before: canonicalizeValue(model, delta.key, delta.before),
+        before: canonicalizeValue(model, delta.key, delta.before, `deltas.${delta.key}.before`),
       };
     case "changed":
       return {
         key: delta.key,
         kind: "changed",
-        before: canonicalizeValue(model, delta.key, delta.before),
-        after: canonicalizeValue(model, delta.key, delta.after),
+        before: canonicalizeValue(model, delta.key, delta.before, `deltas.${delta.key}.before`),
+        after: canonicalizeValue(model, delta.key, delta.after, `deltas.${delta.key}.after`),
       };
   }
 }

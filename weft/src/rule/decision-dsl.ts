@@ -359,7 +359,12 @@ export function match<O>(target: Key<O>, config: MatchTableConfig<O>): Rule<O> {
             op: "match",
             tableName: config.name,
             matchedRowId: row.id,
-            matchedRowLabel: row.label,
+            // Omit the key entirely when the row has no label. Writing
+            // `undefined` would survive as an own property on the detail
+            // object and reach `canonicalize()`, which rejects undefined —
+            // making label-less matches (and therefore every `switchOn`) fail
+            // to freeze. Mirrors the spec path in matchToSpec.
+            ...(row.label !== undefined ? { matchedRowLabel: row.label } : {}),
             usedDefault: false,
           };
           return { output, detail };
