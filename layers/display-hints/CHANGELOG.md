@@ -1,5 +1,14 @@
 # @spaceteams/weft-layer-display-hints
 
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies [4b09017]
+- Updated dependencies [4b09017]
+- Updated dependencies [4b09017]
+  - @spaceteams/weft@0.7.0
+
 ## 0.6.0
 
 ### Patch Changes
