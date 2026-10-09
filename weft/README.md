@@ -18,7 +18,10 @@ yarn add @spaceteams/weft
 
 - **ESM only** — ships as `.mjs` with `.d.mts` type declarations
 - **TypeScript** — strict mode, full type inference
-- **Runtime dependency** — `@standard-schema/spec@1.1.0` (types only)
+- **Runtime dependencies** — `@standard-schema/spec@1.1.0` (types only) and
+  `@noble/hashes@2.4.0` (bundled; the SHA-256 behind `fingerprintValue`). The hash is pure
+  JavaScript rather than `node:crypto` so that every subpath stays browser- and edge-safe —
+  see [Fingerprints](#fingerprints--detecting-model-drift).
 
 ## Quick Start
 
@@ -101,6 +104,12 @@ const compiled = result.model;
 
 Compilation validates the model (cycle detection, missing dependencies, duplicate targets) and produces a `CompiledModel` with a topologically sorted dependency graph.
 
+`createModel` takes one optional argument, `{ version }` — an author-declared behaviour string
+you bump when behaviour implemented by a function changes — rule arithmetic, or a `KeySemantics`
+`normalize` / `eq` / `encode`. It is hashed into `modelFingerprint`; see
+[Fingerprints](#fingerprints--detecting-model-drift). Omit it and such drift is invisible to the
+fingerprint, which is the honest default: those are functions and cannot be hashed.
+
 ### Evaluation
 
 ```ts
@@ -152,6 +161,75 @@ const clientAnalysis = analyzeFrozenDraft(frozenModel, frozenDraft);
 ```
 
 Frozen artifacts are versioned and auto-migrated on parse, so clients stay forward-compatible.
+
+### Fingerprints — Detecting Model Drift
+
+Every frozen draft carries a `modelFingerprint` in its `snapshot`. Because it is a pure
+function of the frozen model, a client can recompute it from the two JSON artifacts it was
+shipped and compare — no server round-trip, and no access to the model's live rule functions:
+
+```ts
+import {
+  CURRENT_FINGERPRINT_VERSION,
+  fingerprintValue,
+  parseFrozenArtifact,
+  snapshotFrozenModel,
+} from "@spaceteams/weft";
+
+const parsed = parseFrozenArtifact(frozenDraftJson);
+
+// Gate on the fingerprint version first. A v3 artifact is migrated to the
+// current *schema* version on parse, but its stored digest was computed over
+// the old projection — comparing that against a freshly computed digest would
+// report a matching model as mismatched.
+const sameFingerprintSemantics =
+  parsed.snapshot.fingerprintVersion === CURRENT_FINGERPRINT_VERSION;
+
+const modelMatches =
+  sameFingerprintSemantics &&
+  fingerprintValue(snapshotFrozenModel(frozenModelJson)) === parsed.snapshot.modelFingerprint;
+```
+
+This catches changed keys, dependency topology, key metadata, validation schemas, constraints,
+and layer `name`/`version`/`inputs` bumps. What it cannot catch is behaviour implemented by
+functions that do not cross the freeze boundary — rule *arithmetic* in `Rule.eval` bodies, and
+`KeySemantics` callbacks (`normalize`, which decides whether an overlay survives; `eq`, which
+decides whether a delta is emitted at all; `encode`, which decides the shape of every frozen
+value). These callbacks cannot be hashed either way: `fn.toString()` misses closure capture
+(`ratio`'s body reads `ops.div(a, b)` and never names `ops`, so every algebra hashes identically)
+and minified output varies by bundler. So behaviour identity is declared instead, exactly as
+`LayerEvaluator.version` is:
+
+```ts
+const m = createModel({ version: "2" });   // bump after the tax rounding fix
+```
+
+The string is hashed into the fingerprint. Nothing enforces that you bump it — it is recorded
+evidence, same contract as `LayerEvaluator.version`.
+
+The example above gates on `snapshot.fingerprintVersion`; here is why that field exists and why the
+artifact `version` cannot do the job. The hash input shape changed in frozen artifact v4, so a v3
+artifact's `modelFingerprint` will not reproduce under v4 code — and it cannot be repaired during
+migration, because a fingerprint depends on the *model*, which the migration never receives. So
+`migrateV3toV4` records the old fingerprint version rather than relabelling it, and
+`parseFrozenArtifact` leaves that value alone. The artifact `version` is structurally unable to
+answer the question: migration is unconditional, so every parsed artifact reports the current
+version no matter where it came from.
+
+Comparing two artifacts is the same rule — gate on the fingerprint version first:
+
+```ts
+if (a.snapshot.fingerprintVersion === b.snapshot.fingerprintVersion) {
+  // Only now are modelFingerprint and analysisFingerprint values comparable.
+}
+```
+
+`baseFingerprint` and `overlayFingerprint` are unaffected by a projection change — they hash
+`draft.base` and `draft.overlay`, not the model — so the gate matters only for the two model-derived
+digests.
+
+Nothing in weft *reads* a fingerprint. Deciding whether two artifacts are comparable is the
+consumer's job.
 
 ### Inspection (Debugging & Visualization)
 

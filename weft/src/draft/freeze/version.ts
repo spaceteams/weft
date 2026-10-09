@@ -1,1 +1,1 @@
-export const CURRENT_FROZEN_VERSION = 3;
+export const CURRENT_FROZEN_VERSION = 4;

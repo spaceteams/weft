@@ -35,7 +35,42 @@ export type RuleOptions<T> = {
   jsonSchema?: Record<string, unknown>;
 };
 
-export function createModel() {
+export type ModelOptions = {
+  /**
+   * Author-declared behaviour version for this model. Bump it whenever a
+   * behaviour implemented by a **function that does not cross the freeze
+   * boundary** changes. That is currently:
+   *
+   * - **rule `eval` bodies** — a changed literal, a new rounding rule, a
+   *   different algebra for the same op
+   * - **`KeySemantics` callbacks** — `normalize`, `eq`, and `encode`/`decode`.
+   *   `normalize` decides whether an overlay survives `normalizeDraft`; `eq`
+   *   decides whether a delta is emitted at all (`diffResults`) and whether an
+   *   overlay is kept; `encode` decides the shape of every frozen value.
+   *
+   * Rule arithmetic is the obvious case, but it is not the only one. These
+   * callbacks are absent from `FrozenModel`, so a change to any of them
+   * produces an identical `modelFingerprint` while altering drafts, deltas, and
+   * frozen values. Verified.
+   *
+   * This is the only thing that lets `modelFingerprint` see such drift, and it
+   * cannot be derived automatically: hashing `fn.toString()` misses closure
+   * capture (ops-aware factories close over `ops`, so every algebra hashes
+   * identically) and is unstable across builds. What *is* hashed is everything
+   * declarative — each rule's `spec`, key identity, dependency topology, key
+   * metadata, schemas, constraints, and layer names/versions/inputs — but not
+   * the functions that consume it.
+   *
+   * Same contract as `LayerEvaluator.version` and DBOS's `applicationVersion`:
+   * a string the author bumps, not something the library can derive.
+   *
+   * @example
+   * const m = createModel({ version: "2" }); // bumped after the tax rounding fix
+   */
+  readonly version?: string;
+};
+
+export function createModel(options: ModelOptions = {}) {
   const inputs: Input<unknown>[] = [];
   const rules: Rule<unknown>[] = [];
   const keyMeta: Map<KeyId, KeyMeta> = new Map();
@@ -130,6 +165,7 @@ export function createModel() {
     },
     build(): Model {
       return {
+        ...(options.version !== undefined ? { version: options.version } : {}),
         inputs,
         rules,
         semantics: semanticsMap,

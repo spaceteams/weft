@@ -3,6 +3,7 @@
   "version": "0.7.0",
   "description": "SI unit propagation and dimensional analysis layer for @spaceteams/weft",
   "type": "module",
+  "sideEffects": false,
   "files": [
     "dist"
   ],

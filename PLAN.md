@@ -89,6 +89,14 @@ worse than a throw — it loses data *and* makes distinct values collide under f
 Only `Date` is special-cased. A test in `snapshot/canonicalize.test.ts` pins the current
 behaviour so it cannot change unnoticed.
 
+Related, and now fixed: `KeyMeta` was a live instance of the *undefined*-in-own-keys half of this
+problem. `KeyMeta` is all-optional and `createModel` stored the author's object by reference, so
+`m.input(a, { label: config.title })` with a possibly-undefined `title` produced an own
+`label: undefined` key, which `canonicalize` rejects — an unfreezable model. Nothing hashed
+`keyMeta` before, so it was latent; `freezeModel` now drops undefined-valued metadata before
+canonicalizing. Note the general shape: `canonicalize` throws on `undefined`, it does not skip
+the key, and `toEqual` will not catch an undefined-valued own key in a test.
+
 ---
 
 ## Verified findings
@@ -96,22 +104,26 @@ behaviour so it cannot change unnoticed.
 Established by reading source **and** by probing `dist/`. Recorded so they are not
 rediscovered at the wrong size.
 
-### 8a. Fingerprint coverage is much narrower than it looks
+### 8a. Fingerprint coverage was much narrower than it looked — **fixed in 0.8.0**
 
-`snapshotModel` (`src/model/snapshot-model.ts`) — the sole input to `modelFingerprint` and
-`analysisFingerprint` — returns only `{ inputKeys, rules: [{ target, spec }] }`, a strict subset
-of `FrozenModel`. Verified: `modelFingerprint` is **identical** across models differing in eval
-body, in a key's `label`, and in rule dependency order. Drift in `keyMeta`, dependency
-topology, `orderedRuleTargets`, `jsonSchemas`, `keyValueTypes`, `constraints`, and layers is all
-invisible to it.
+*Original finding, kept because the reasoning still applies.* `snapshotModel`
+(`src/model/snapshot-model.ts`) — the sole input to `modelFingerprint` and `analysisFingerprint` —
+returned only `{ inputKeys, rules: [{ target, spec }] }`, a strict subset of `FrozenModel`.
+Verified: `modelFingerprint` was **identical** across models differing in eval body, in a key's
+`label`, and in rule dependency order. Drift in `keyMeta`, dependency topology,
+`orderedRuleTargets`, `jsonSchemas`, `keyValueTypes`, `constraints`, and layers was all invisible.
 
-Two related problems: the fingerprints are **write-only** (nothing reads them; `analyzeFrozenDraft`
-never touches `draft.snapshot`; there is no drift-detection API), and
-`baseFingerprint`/`overlayFingerprint` hash the *raw* `draft.base`/`overlay` while the adjacent
-emitted `base`/`overlay` hash the *canonicalized* forms — two serializations of one logical
-value in a single artifact.
+**Resolved by making the fingerprint a pure function of the frozen model.** `snapshotFrozenModel`
+takes a `FrozenModel` — which carries every one of those fields — and `snapshotModel` is now
+defined as `snapshotFrozenModel(freezeModel(model))`. Keying off the frozen form rather than
+`CompiledModel.rules` is what closed the gap, and it also means a client can recompute a
+fingerprint from the two JSON artifacts it was shipped: previously it could not, because
+`CompiledModel` requires live `Rule.eval`. Live function behaviour remains the uncovered axis — rule
+arithmetic *and* `KeySemantics` `normalize` / `eq` / `encode`, which decide whether an overlay
+survives, whether a delta is emitted, and the shape of every frozen value. `createModel({ version })`
+is the supported channel for all of them — hashed alongside each layer's `name` + `version`.
 
-**Rejected: hashing `fn.toString()`.** Two reasons, the first fatal:
+**Rejected: hashing `fn.toString()`.** Still the right answer. Two reasons, the first fatal:
 
 1. *Closure capture is invisible.* Ops-aware factories close over `ops`, so `ratio`'s eval body
    reads `ops.div(a, b)` and never mentions `ops` — every algebra hashes identically. You'd
@@ -120,9 +132,48 @@ value in a single artifact.
    one commit can differ. Since `analysisFingerprint` lives inside the artifact, you could no
    longer diff two artifacts from two builds of the same commit.
 
-The right home for behaviour identity is a declared string, which is why `LayerEvaluator.version`
-is required. Extending that to rule semantics (an author-supplied version in `spec`) is
-plausible but opt-in and adds author burden, so it needs a design decision rather than a fix.
+The same reasoning rules out a `browser` export condition for the hash: `browser` is honoured
+by webpack/vite/rollup and not by Node SSR, so SSR would silently take a different build — a
+fingerprint that varies by bundler is precisely the hazard above. Hence `@noble/hashes` and a
+byte-identical digest in every environment instead.
+
+**Still open, and unchanged by the above:**
+
+- The fingerprints remain **write-only**. Nothing in the library reads them; `analyzeFrozenDraft`
+  never touches `draft.snapshot`; there is no drift-detection API. A consumer deciding whether two
+  artifacts are comparable is still an unbuilt feature. Recompute is now *possible*, which was the
+  precondition, not the feature.
+- `baseFingerprint`/`overlayFingerprint` hash the *raw* `draft.base`/`overlay` while the adjacent
+  emitted `base`/`overlay` hash the *canonicalized* forms — two serializations of one logical
+  value in a single artifact.
+- A v3 artifact's `modelFingerprint` is **not reproducible** by v4 code and cannot be migrated: the
+  hash input shape changed, and a fingerprint depends on the *model*, which the migration is never
+  handed. `snapshot.fingerprintVersion` is the axis for detecting this — the artifact `version` is
+  useless for it, since `parseFrozenArtifact` migrates unconditionally and so reports
+  `CURRENT_FROZEN_VERSION` for a migrated artifact too. `migrateV3toV4` therefore stamps the
+  *previous* fingerprint version rather than the current one. `baseFingerprint` and
+  `overlayFingerprint` are unaffected: they hash `draft.base`/`draft.overlay`, not the model.
+- `FrozenModel` still has **no independent artifact schema version**, and `hydrateModel` still has no
+  validate or migrate path — so the migration skill's instruction to bump the version for a
+  `FrozenModel` change remains unenforceable for models. `CURRENT_FROZEN_VERSION` governs
+  `FrozenEvaluatedDraft` alone. The new `FrozenModel.version` is author-declared *behaviour*
+  identity, not a schema version.
+- Layer `version` is still recorded but never **compared** by anything. A `units` v1 bag and a
+  `units` v2 bag are indistinguishable to a consumer that does not check versions itself. (Their
+  models do fingerprint differently, so drift is detectable — just not at the value-bag level.)
+
+### Three version axes, deliberately named similarly
+
+This change introduced a third. They are distinct questions, and conflating them is the trap:
+
+| Field | Answers | Changed by |
+| --- | --- | --- |
+| `FrozenModel.version` | Which *author-declared behaviour revision* produced this model | author, when arithmetic or `KeySemantics` callbacks change |
+| `snapshot.fingerprintVersion` | Which `snapshotFrozenModel` projection produced these digests | library, when the projection's coverage changes |
+| `CURRENT_FROZEN_VERSION` | Which *artifact schema* this blob conforms to | library, when a field is added or removed |
+
+`CURRENT_FROZEN_VERSION` is the one to be careful with: migration makes every parsed artifact report
+the current value, so it can never answer "were these two artifacts fingerprinted the same way?"
 
 ### 8b. `match()` with no matching row and no default throws in both modes
 

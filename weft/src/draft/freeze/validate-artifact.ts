@@ -89,6 +89,14 @@ function checkSnapshot(problems: string[], snapshot: unknown): void {
       problems.push(`snapshot.${field}: expected a string, got ${describe(snapshot[field])}`);
     }
   }
+  // A migrated artifact legitimately carries an older value here — that is how a
+  // consumer tells its fingerprints are not comparable with the current ones —
+  // so this checks the type, not equality with CURRENT_FINGERPRINT_VERSION.
+  if (typeof snapshot.fingerprintVersion !== "number") {
+    problems.push(
+      `snapshot.fingerprintVersion: expected a number, got ${describe(snapshot.fingerprintVersion)}`,
+    );
+  }
   if (typeof snapshot.createdAt !== "string") {
     problems.push(`snapshot.createdAt: expected a string, got ${describe(snapshot.createdAt)}`);
   }

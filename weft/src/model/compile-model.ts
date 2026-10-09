@@ -179,6 +179,7 @@ export function compileModel(model: Model): CompileResult {
     ok: true,
     issues,
     model: {
+      ...(model.version !== undefined ? { version: model.version } : {}),
       keys: new Map(declaredKeys),
       semantics: model.semantics,
       inputs: model.inputs,

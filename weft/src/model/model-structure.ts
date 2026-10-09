@@ -24,6 +24,12 @@ export type KeyValueType =
  * via TypeScript structural typing — no explicit `extends` required.
  */
 export type ModelStructure = {
+  /**
+   * Author-declared behaviour version, from `createModel({ version })`.
+   * Optional because `CompiledModel` must satisfy this interface structurally
+   * and a model need not declare one.
+   */
+  readonly version?: string;
   readonly inputKeys: readonly KeyId[];
   readonly orderedRuleTargets: readonly KeyId[];
   readonly depsByTarget: ReadonlyMap<KeyId, readonly KeyId[]>;

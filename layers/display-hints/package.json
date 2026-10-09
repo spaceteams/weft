@@ -3,6 +3,7 @@
   "version": "0.7.0",
   "description": "Non-propagating display hints layer (unit, semanticType) for @spaceteams/weft",
   "type": "module",
+  "sideEffects": false,
   "files": [
     "dist"
   ],

@@ -7,6 +7,7 @@ import { compileModel, createModel, defaultNumberOps, key, ratio, sum } from "..
 import { groupDiffByOrigin } from "../overlay/diff-group";
 import { deriveOrigins } from "../overlay/evaluate-overlay";
 import { explainDiffs } from "../overlay/explain-diff";
+import { canonicalize } from "../snapshot/canonicalize";
 import { freezeModel, hydrateModel } from "./freeze-model";
 import { downstreamOf, getDeclaredKeys, getDependencies, getDependents, upstreamOf } from "./model";
 import { downstreamGraphOf, subgraph, toGraph, upstreamGraphOf } from "./model-graph";
@@ -65,6 +66,51 @@ describe("freezeModel", () => {
 
     expect(frozen.inputKeys).toEqual([...model.inputKeys]);
     expect(frozen.orderedRuleTargets).toEqual([...model.orderedRuleTargets]);
+  });
+
+  it("carries the model's declared version", () => {
+    const versionedTotal = key<number>("versionedTotal");
+    const mv = createModel({ version: "3" });
+    mv.input(equity);
+    mv.input(liabilities);
+    mv.rule(sum(defaultNumberOps, versionedTotal, [equity, liabilities]));
+
+    const compiled = compileModel(mv.build());
+    if (!compiled.ok) throw new Error(compiled.issues.map((i) => i.message).join(", "));
+
+    expect(freezeModel(compiled.model).version).toBe("3");
+    expect(JSON.parse(JSON.stringify(freezeModel(compiled.model))).version).toBe("3");
+  });
+
+  it("omits `version` entirely when the model declares none", () => {
+    // An own key holding `undefined` would survive `Object.entries` and make
+    // the artifact uncanonicalizable, so the field must be absent.
+    expect(freezeModel(model)).not.toHaveProperty("version");
+    expect(Object.keys(freezeModel(model))).not.toContain("version");
+  });
+
+  it("drops undefined-valued key metadata instead of freezing it", () => {
+    // `KeyMeta` is all-optional and `createModel` stores the author's object by
+    // reference, so an explicit `label: undefined` produces an own key with an
+    // undefined value. `Object.entries` sees those and `canonicalize` rejects
+    // them, which made such a model unfreezable.
+    const a = key<number>("a");
+    const b = key<number>("b");
+    const total2 = key<number>("total2");
+    const mu = createModel();
+    mu.input(a, { label: undefined, description: "kept" });
+    mu.input(b);
+    mu.rule(sum(defaultNumberOps, total2, [a, b]));
+
+    const compiled = compileModel(mu.build());
+    if (!compiled.ok) throw new Error(compiled.issues.map((i) => i.message).join(", "));
+
+    const frozen = freezeModel(compiled.model);
+
+    expect(frozen.keyMeta.a).toEqual({ description: "kept" });
+    expect(frozen.keyMeta.a).not.toHaveProperty("label");
+    // The whole model still canonicalizes, which is the real invariant.
+    expect(() => canonicalize(frozen)).not.toThrow();
   });
 });
 

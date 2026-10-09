@@ -3,6 +3,7 @@
   "version": "0.7.0",
   "description": "Source tracking and confidence scoring layer for @spaceteams/weft",
   "type": "module",
+  "sideEffects": false,
   "files": [
     "dist"
   ],
