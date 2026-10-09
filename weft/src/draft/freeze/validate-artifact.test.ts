@@ -5,6 +5,7 @@ import { freezeEvaluatedDraft } from "./freeze-evaluated-draft";
 import { migrateFrozenArtifact } from "./migrate";
 import { parseFrozenArtifact } from "./parse";
 import { validateFrozenArtifact } from "./validate-artifact";
+import { CURRENT_FROZEN_VERSION } from "./version";
 
 // ---------------------------------------------------------------------------
 // Fixture: a real frozen artifact, then deliberately corrupted copies
@@ -212,7 +213,9 @@ describe("validateFrozenArtifact", () => {
 
   it("rejects a version other than the current one", () => {
     const problems = validateFrozenArtifact({ ...valid, version: 999 });
-    expect(problems[0]).toMatch(/version: expected 3, got a number/);
+    expect(problems[0]).toMatch(
+      new RegExp(`version: expected ${CURRENT_FROZEN_VERSION}, got a number`),
+    );
   });
 });
 

@@ -3,6 +3,7 @@
   "version": "0.7.0",
   "description": "",
   "type": "module",
+  "sideEffects": false,
   "files": [
     "dist"
   ],
@@ -41,6 +42,7 @@
   "keywords": [],
   "license": "MIT",
   "dependencies": {
+    "@noble/hashes": "2.4.0",
     "@standard-schema/spec": "1.1.0"
   }
 }

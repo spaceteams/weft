@@ -7,6 +7,8 @@ import type { Constraint } from "../validate/constraint";
 import type { KeySchema } from "../validate/key-schema";
 
 export type Model = {
+  /** Author-declared behaviour version. See {@link ModelOptions.version}. */
+  readonly version?: string;
   readonly inputs: readonly Input<unknown>[];
   readonly rules: readonly Rule<unknown>[];
   readonly semantics: ReadonlyMap<KeyId, Partial<KeySemantics<unknown>>>;

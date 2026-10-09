@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import { compileModel, createModel, defaultNumberOps, key, ratio, sum } from "../../index";
 import { inspectTraceTarget } from "../../inspect/inspect-trace-target";
 import { inspectionNodeToAscii } from "../../inspect/inspection-node-to-ascii";
+import { CURRENT_FINGERPRINT_VERSION } from "../../snapshot/fingerprint";
 import { evaluateDraft } from "../evaluate-draft";
 import { freezeEvaluatedDraft } from "./freeze-evaluated-draft";
 import { migrateFrozenArtifact } from "./migrate";
 import { parseFrozenArtifact } from "./parse";
+import { validateFrozenArtifact } from "./validate-artifact";
 import { CURRENT_FROZEN_VERSION } from "./version";
 
 // ---------------------------------------------------------------------------
@@ -146,6 +148,77 @@ describe("current freeze output", () => {
     const frozen = freezeEvaluatedDraft(model, evaluated);
 
     expect(frozen.version).toBe(CURRENT_FROZEN_VERSION);
+  });
+
+  it("freezeEvaluatedDraft stamps the current fingerprint version", () => {
+    const evaluated = evaluateDraft(model, draft, "lenient");
+    const frozen = freezeEvaluatedDraft(model, evaluated);
+
+    expect(frozen.snapshot.fingerprintVersion).toBe(CURRENT_FINGERPRINT_VERSION);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fingerprintVersion — the axis that survives migration
+// ---------------------------------------------------------------------------
+
+describe("snapshot.fingerprintVersion", () => {
+  // Regression: v3 → v4 stamps `version: 4` but must NOT relabel the snapshot's
+  // fingerprint version. `parseFrozenArtifact` migrates unconditionally, so
+  // without this a consumer could not tell a migrated artifact from a natively
+  // frozen one, and would wrongly conclude their modelFingerprint values are
+  // comparable — recomputing one under the v4 projection cannot match.
+  it("a migrated artifact keeps the previous fingerprint version", () => {
+    const migrated = migrateFrozenArtifact(loadFixture("v0-evaluated.json"));
+
+    expect(migrated.version).toBe(CURRENT_FROZEN_VERSION);
+    expect((migrated.snapshot as { fingerprintVersion: number }).fingerprintVersion).toBe(3);
+  });
+
+  it("survives parseFrozenArtifact, unlike the artifact version", () => {
+    const parsed = parseFrozenArtifact(loadFixture("v0-evaluated.json"));
+
+    expect(parsed.version).toBe(CURRENT_FROZEN_VERSION);
+    expect(parsed.snapshot.fingerprintVersion).toBe(3);
+    expect(parsed.snapshot.fingerprintVersion).not.toBe(CURRENT_FINGERPRINT_VERSION);
+  });
+
+  it("stamps unconditionally, so it composes through a migration chain", () => {
+    // Each shape-changing migration owns the value for the artifacts it touches,
+    // and must overwrite rather than fill-in-if-absent: if a future v4 → v5
+    // changes the projection again, it has to stamp 4 over the 3 that this
+    // migration wrote, not leave a stale 3 behind.
+    const artifact = loadFixture("v0-evaluated.json");
+    artifact.version = 3;
+    artifact.snapshot = { ...(artifact.snapshot as object), fingerprintVersion: 2 };
+
+    const migrated = migrateFrozenArtifact(artifact);
+
+    expect((migrated.snapshot as { fingerprintVersion: number }).fingerprintVersion).toBe(3);
+  });
+
+  it("tolerates a malformed snapshot without throwing", () => {
+    // Validation is `parseFrozenArtifact`'s job; the migration must not mask the
+    // real problem by crashing first.
+    const artifact = { ...loadFixture("v0-evaluated.json"), snapshot: "not-an-object" };
+
+    const migrated = migrateFrozenArtifact(artifact);
+
+    expect(migrated.version).toBe(CURRENT_FROZEN_VERSION);
+    expect(migrated.snapshot).toBe("not-an-object");
+  });
+
+  it("is validated as a number", () => {
+    const artifact = loadFixture("v0-evaluated.json");
+    artifact.version = CURRENT_FROZEN_VERSION;
+    artifact.snapshot = {
+      ...(artifact.snapshot as object),
+      fingerprintVersion: "4",
+    };
+
+    expect(validateFrozenArtifact(artifact as Record<string, unknown>)).toContainEqual(
+      expect.stringContaining("snapshot.fingerprintVersion: expected a number"),
+    );
   });
 });
 

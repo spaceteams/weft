@@ -12,7 +12,7 @@ import {
   type CanonicalTraceStep,
   canonicalizeTraceStep,
 } from "../../snapshot/canonicalizeTraceStep";
-import { fingerprintValue } from "../../snapshot/fingerprint";
+import { CURRENT_FINGERPRINT_VERSION, fingerprintValue } from "../../snapshot/fingerprint";
 import type { EvaluatedDraft } from "../evaluate-draft";
 import { CURRENT_FROZEN_VERSION } from "./version";
 
@@ -25,6 +25,18 @@ export type FrozenSnapshot = {
   readonly baseFingerprint: string;
   readonly overlayFingerprint: string;
   readonly analysisFingerprint: string;
+  /**
+   * Which `snapshotFrozenModel` projection produced `modelFingerprint` and
+   * `analysisFingerprint`. Consumers must compare this before comparing either
+   * of them — see {@link CURRENT_FINGERPRINT_VERSION}.
+   *
+   * An artifact migrated from an older shape keeps its original value here
+   * rather than being relabelled, because its stored digests were computed over
+   * that older projection. Note that `baseFingerprint` and `overlayFingerprint`
+   * are unaffected by a projection change: they hash `draft.base` and
+   * `draft.overlay`, which are not part of the model snapshot.
+   */
+  readonly fingerprintVersion: number;
   readonly createdAt: string;
 };
 
@@ -44,6 +56,7 @@ export function createFrozenSnapshot(
       base: draft.base,
       overlay: draft.overlay,
     }),
+    fingerprintVersion: CURRENT_FINGERPRINT_VERSION,
     createdAt: now,
   };
 }

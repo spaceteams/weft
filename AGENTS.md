@@ -31,9 +31,12 @@ Three things that are not readable off `src/layer.ts`:
   `ReadonlyMap<KeyId, Rule<unknown>>`, so the dispatch erased each rule's output type before
   any layer runs. Narrowing is the layer's job. The parameter is optional only so direct
   `layer.eval(op, deps, spec)` calls keep compiling.
-- **`version` is load-bearing.** Every layer declares one and it is written into
+- **`version` is load-bearing in two places.** Every layer declares one and it is written into
   `FrozenModel.layers[].version`, so a frozen artifact records which behaviour produced its
-  values. Bump it on any propagation semantics change.
+  values. It is also hashed into `modelFingerprint` via `snapshotFrozenModel`, so a bump moves
+  the fingerprint — which is the point, since a value bag written by `units` v1 is not
+  comparable to one written by v2. Bump it on any propagation semantics change. Note that
+  nothing in the library *enforces* the comparison; the version is recorded evidence.
 - **Layers are independent**, evaluated in registration order. A layer cannot read another
   layer's values (see PLAN.md Open Questions).
 
@@ -50,9 +53,20 @@ Each of these is invisible in the code and has cost debugging time.
   `undefined`. `match()` used to write `matchedRowLabel: row.label` unconditionally, which made
   every `switchOn` model unfreezable. Use `...(x !== undefined ? { x } : {})` for any optional
   detail field — and note `toEqual` will not catch it, since it ignores undefined-valued keys.
-- **The root barrel is Node-only.** `src/index.ts` re-exports `fingerprint.ts`, which imports
-  `node:crypto` at module scope. Every subpath except `.` and `./snapshot` is crypto-free and
-  browser/edge safe.
+- **Author-supplied metadata can carry `undefined` into a frozen artifact.** `KeyMeta` is
+  all-optional and `createModel` stores the author's object by reference, so
+  `m.input(a, { label: config.title })` with a possibly-undefined `title` produces an own
+  `label: undefined` key. `freezeModel` drops those before canonicalizing. `canonicalize`
+  *throws* on `undefined` — it does not skip the key — so this is a hard freeze failure, and
+  `toEqual` will not catch it in a test.
+- **Every subpath is browser and edge safe; do not reintroduce `node:crypto`.** Fingerprinting
+  used to import `node:crypto` at module scope, which made the root barrel, `./draft`, *and*
+  `./snapshot` Node-only — not just the root barrel, which is what this file used to claim.
+  `fingerprintValue` now hashes via `@noble/hashes`, byte-identical to `node:crypto`, so every
+  entry point is clean. Do **not** fix a platform complaint by adding a `browser` export
+  condition or a second `platform` build: `browser` is honoured by webpack/vite/rollup and not
+  by Node SSR, so SSR would silently take a different build. For a *fingerprint* that is the
+  same reproducibility hazard as hashing `fn.toString()` — a value that varies by bundler.
 - **`migrateFrozenArtifact` does not validate; `parseFrozenArtifact` does.** Migration only
   inspects the `version` field. Always parse with the latter, or call
   `validateFrozenArtifact` explicitly.
@@ -77,10 +91,23 @@ Each of these is invisible in the code and has cost debugging time.
    `CanonicalDelta[]` gets canonical types back.
 5. **`normalizeDraft` is server-only** — it needs `CompiledModel` for semantics. The server
    normalizes before freezing, so clients skip it.
-6. **Fingerprinting is Node-only and currently unusable for drift detection** — nothing in the
-   library reads any fingerprint field, and `snapshotModel` (its only model input) covers only
-   `inputKeys` and per-rule `target` + `spec`, not `keyMeta`, dependency topology, or layers.
-   See PLAN.md 8a.
+6. **A fingerprint is a pure function of the frozen model** — `snapshotFrozenModel` takes a
+   `FrozenModel`, not a `CompiledModel`, so a client holding only frozen data can recompute it
+   and a server cannot disagree with that client. `snapshotModel` is defined as
+   `snapshotFrozenModel(freezeModel(model))`, not the reverse. It covers the whole frozen model,
+   so `keyMeta`, dependency topology, layer names/versions/inputs, and validation metadata are
+   all in scope. Behaviour implemented by functions that do *not* cross the freeze boundary is
+   still out: rule `eval` bodies and `KeySemantics` `normalize` / `eq` / `encode` / `decode`.
+   Those decide, respectively, the computed outputs, whether an overlay survives
+   `normalizeDraft`, whether a delta is emitted, and the shape of every frozen value — and none
+   appear in `FrozenModel`. So behaviour identity comes from `createModel({ version })` — the same
+   declared-string contract as `LayerEvaluator.version`, and to be bumped for *any* of those
+   callbacks, not just arithmetic. Nothing in the library *reads* any fingerprint field;
+   recomputing them is the consumer's job. Before comparing two fingerprints, check
+   `snapshot.fingerprintVersion` — **not** `version`. The hash input shape changed in v4, and a
+   migration cannot recompute a digest it has no model for, so `migrateV3toV4` stamps the
+   *previous* fingerprint version. `CURRENT_FROZEN_VERSION` is useless for this: migration makes
+   every parsed artifact report the current value. See PLAN.md 8a for all three version axes.
 7. **`keyValueTypes` is derived, not declared** — `freezeModel` infers it from the JSON Schema
    `type`; keys without schemas get `"unknown"`.
 8. **Structural validation lives in `draft/freeze/`, value validation in `validate/`** —
@@ -101,7 +128,7 @@ Each of these is invisible in the code and has cost debugging time.
   works metadata-only. Valibot does not implement the extension.
 
 Conventions: kebab-case files, PascalCase types, `export type` at declaration site, co-located
-tests. The library is side-effect-free apart from `node:crypto`.
+tests. The library is side-effect-free, and declares `"sideEffects": false` in its `package.json`.
 
 <!-- BEGIN:turborepo-agent-rules -->
 

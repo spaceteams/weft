@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FrozenEvaluatedDraft } from "../draft/freeze/freeze-evaluated-draft";
 import type { FrozenModel } from "../model/freeze-model";
+import { CURRENT_FINGERPRINT_VERSION } from "../snapshot/fingerprint";
 import { type JsonSchemaValidator, validateFrozenDraft } from "./validate-frozen-draft";
 
 // ---------------------------------------------------------------------------
@@ -28,6 +29,7 @@ function minimalFrozenDraft(overrides?: Partial<FrozenEvaluatedDraft>): FrozenEv
       baseFingerprint: "b",
       overlayFingerprint: "o",
       analysisFingerprint: "a",
+      fingerprintVersion: CURRENT_FINGERPRINT_VERSION,
       createdAt: "2024-01-01T00:00:00.000Z",
     },
     base: {},

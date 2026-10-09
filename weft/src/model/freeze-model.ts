@@ -31,6 +31,18 @@ export type FrozenLayerMeta = {
  * a {@link ModelStructure} with proper Map instances.
  */
 export type FrozenModel = {
+  /**
+   * Author-declared behaviour version, from `createModel({ version })`. Bump it
+   * when a behaviour implemented by a function that does not cross the freeze
+   * boundary changes — rule `eval` arithmetic, or `KeySemantics` `normalize` /
+   * `eq` / `encode` / `decode`. Read by {@link snapshotFrozenModel}, which
+   * hashes it into `modelFingerprint`; since those callbacks are absent from
+   * this type, it is the only way such drift becomes visible.
+   *
+   * Absent on models built without one, and on frozen models from before this
+   * field existed.
+   */
+  readonly version?: string;
   readonly inputKeys: readonly KeyId[];
   readonly orderedRuleTargets: readonly KeyId[];
   readonly depsByTarget: Readonly<Record<KeyId, readonly KeyId[]>>;
@@ -192,12 +204,28 @@ export function freezeModel(model: CompiledModel): FrozenModel {
     });
   }
 
+  // `KeyMeta` is all-optional and `createModel` stores the author's object by
+  // reference, so `m.input(a, { label: config.title })` with a possibly-undefined
+  // `title` carries an own `label: undefined` key. `Object.entries` sees those
+  // and `canonicalize` throws on them, which would make such a model unfreezable
+  // — and `toEqual` will not catch it in a test, since it ignores undefined-valued
+  // keys. Drop them, then canonicalize as `ruleSpecs` does.
+  const keyMeta: Record<KeyId, KeyMeta> = {};
+  for (const [key, meta] of model.keyMeta) {
+    const defined: Record<string, unknown> = {};
+    for (const [field, value] of Object.entries(meta)) {
+      if (value !== undefined) defined[field] = value;
+    }
+    keyMeta[key] = canonicalize(defined) as KeyMeta;
+  }
+
   const result: FrozenModel = {
+    ...(model.version !== undefined ? { version: model.version } : {}),
     inputKeys: [...model.inputKeys],
     orderedRuleTargets: [...model.orderedRuleTargets],
     depsByTarget: Object.fromEntries(model.depsByTarget),
     dependentsByKey: Object.fromEntries(model.dependentsByKey),
-    keyMeta: Object.fromEntries(model.keyMeta),
+    keyMeta,
 
     ruleSpecs,
   };
@@ -225,6 +253,7 @@ export function freezeModel(model: CompiledModel): FrozenModel {
  */
 export function hydrateModel(frozen: FrozenModel): ModelStructure {
   const result: ModelStructure = {
+    ...(frozen.version !== undefined ? { version: frozen.version } : {}),
     inputKeys: frozen.inputKeys,
     orderedRuleTargets: frozen.orderedRuleTargets,
     depsByTarget: new Map(Object.entries(frozen.depsByTarget)),
