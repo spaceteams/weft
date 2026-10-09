@@ -1,5 +1,12 @@
 # @spaceteams/weft-layer-dimensional
 
+## 0.8.0
+
+### Patch Changes
+
+- Updated dependencies [8cb192e]
+  - @spaceteams/weft@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
