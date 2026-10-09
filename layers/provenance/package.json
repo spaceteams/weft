@@ -1,6 +1,6 @@
 {
   "name": "@spaceteams/weft-layer-provenance",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Source tracking and confidence scoring layer for @spaceteams/weft",
   "type": "module",
   "sideEffects": false,
